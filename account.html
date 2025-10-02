@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Account - Fire Diamond Topup</title>
     <link rel="stylesheet" href="styles/main.css">
 </head>
-
 <body>
     <nav class="navbar">
         <div class="nav-container">
@@ -68,9 +66,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/debug.js"></script>
     <script>
         // Account page specific JavaScript
         document.addEventListener('DOMContentLoaded', function() {
+            // Load user profile
+            loadUserProfile();
+            
             // Tab navigation
             const navItems = document.querySelectorAll('.nav-item');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -79,20 +81,41 @@
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
                     const target = this.getAttribute('href').substring(1);
-
+                    
                     // Update active nav item
                     navItems.forEach(nav => nav.classList.remove('active'));
                     this.classList.add('active');
-
+                    
                     // Show target tab
                     tabContents.forEach(tab => tab.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
+                    
+                    // Load orders if orders tab is clicked
+                    if (target === 'orders') {
+                        loadUserOrders();
+                    }
                 });
             });
 
-            // Load user orders
+            // Load user orders initially
             loadUserOrders();
         });
+
+        async function loadUserProfile() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Update profile information
+            document.getElementById('userName').textContent = currentUser.full_name;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('profileName').textContent = currentUser.full_name;
+            document.getElementById('profileEmail').textContent = currentUser.email;
+            document.getElementById('profileMobile').textContent = currentUser.mobile_number;
+            document.getElementById('profileSince').textContent = new Date(currentUser.created_at).toLocaleDateString();
+        }
 
         async function loadUserOrders() {
             const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -101,19 +124,20 @@
                 return;
             }
 
-            const {
-                data: orders,
-                error
-            } = await supabase
+            // Check if supabase is available
+            if (typeof supabase === 'undefined') {
+                console.error('Supabase not available');
+                return;
+            }
+
+            const { data: orders, error } = await supabase
                 .from('orders')
                 .select(`
                     *,
                     products (name, diamonds_count, price)
                 `)
                 .eq('user_id', currentUser.id)
-                .order('created_at', {
-                    ascending: false
-                });
+                .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Error loading orders:', error);
@@ -121,7 +145,7 @@
             }
 
             const ordersList = document.getElementById('ordersList');
-            if (orders.length === 0) {
+            if (!orders || orders.length === 0) {
                 ordersList.innerHTML = '<p>No orders found.</p>';
                 return;
             }
@@ -144,5 +168,4 @@
         }
     </script>
 </body>
-
 </html>
