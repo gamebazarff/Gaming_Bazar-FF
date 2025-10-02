@@ -28,7 +28,11 @@
                 </a>
                 <a href="#orders" class="nav-item">
                     <i class="fas fa-shopping-cart"></i>
-                    Orders
+                    All Orders
+                </a>
+                <a href="#pending-orders" class="nav-item">
+                    <i class="fas fa-clock"></i>
+                    Pending Orders
                 </a>
                 <a href="#" class="nav-item" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
@@ -55,12 +59,20 @@
                             <p id="pendingOrders">0</p>
                         </div>
                         <div class="stat-card">
+                            <h3>Completed Orders</h3>
+                            <p id="completedOrders">0</p>
+                        </div>
+                        <div class="stat-card">
                             <h3>Total Products</h3>
                             <p id="totalProducts">0</p>
                         </div>
                         <div class="stat-card">
                             <h3>Total Users</h3>
                             <p id="totalUsers">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Revenue</h3>
+                            <p id="totalRevenue">৳0</p>
                         </div>
                     </div>
                 </div>
@@ -69,7 +81,7 @@
                 <div id="categories" class="tab-content">
                     <div class="section-header">
                         <h2>Categories</h2>
-                        <button class="btn-primary" onclick="adminPanel.openCategoryModal()">
+                        <button class="btn-primary" onclick="window.adminPanel.openCategoryModal()">
                             <i class="fas fa-plus"></i> Add Category
                         </button>
                     </div>
@@ -94,7 +106,7 @@
                 <div id="products" class="tab-content">
                     <div class="section-header">
                         <h2>Products</h2>
-                        <button class="btn-primary" onclick="adminPanel.openProductModal()">
+                        <button class="btn-primary" onclick="window.adminPanel.openProductModal()">
                             <i class="fas fa-plus"></i> Add Product
                         </button>
                     </div>
@@ -117,20 +129,35 @@
                     </div>
                 </div>
 
-                <!-- Orders Tab -->
+                <!-- All Orders Tab -->
                 <div id="orders" class="tab-content">
                     <div class="section-header">
-                        <h2>Orders</h2>
+                        <h2>All Orders</h2>
+                        <div class="filter-controls">
+                            <select id="orderStatusFilter" onchange="window.adminPanel.filterOrders()">
+                                <option value="all">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                            <button class="btn-danger" onclick="window.adminPanel.deleteCompletedOrders()" title="Delete completed orders">
+                                <i class="fas fa-trash"></i> Clean Completed
+                            </button>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table id="ordersTable">
                             <thead>
                                 <tr>
                                     <th>Order ID</th>
+                                    <th>User ID</th>
                                     <th>Product</th>
-                                    <th>User</th>
+                                    <th>User Email</th>
                                     <th>Amount</th>
                                     <th>Payment Method</th>
+                                    <th>Payment Number</th>
+                                    <th>Transaction ID</th>
+                                    <th>Game ID</th>
                                     <th>Status</th>
                                     <th>Date</th>
                                     <th>Actions</th>
@@ -142,6 +169,43 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Pending Orders Tab -->
+                <div id="pending-orders" class="tab-content">
+                    <div class="section-header">
+                        <h2>Pending Orders</h2>
+                        <div class="pending-actions">
+                            <button class="btn-success" onclick="window.adminPanel.completeAllPending()">
+                                <i class="fas fa-check-double"></i> Complete All
+                            </button>
+                            <button class="btn-danger" onclick="window.adminPanel.cancelAllPending()">
+                                <i class="fas fa-times"></i> Cancel All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="pendingOrdersTable">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>User ID</th>
+                                    <th>Product</th>
+                                    <th>User Email</th>
+                                    <th>Amount</th>
+                                    <th>Payment Method</th>
+                                    <th>Payment Number</th>
+                                    <th>Transaction ID</th>
+                                    <th>Game ID</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Pending orders will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -149,7 +213,7 @@
     <!-- Category Modal -->
     <div id="categoryModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="adminPanel.closeCategoryModal()">&times;</span>
+            <span class="close" onclick="window.adminPanel.closeCategoryModal()">&times;</span>
             <h2 id="categoryModalTitle">Add Category</h2>
             <form id="categoryForm">
                 <input type="hidden" id="categoryId">
@@ -176,7 +240,7 @@
     <!-- Product Modal -->
     <div id="productModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="adminPanel.closeProductModal()">&times;</span>
+            <span class="close" onclick="window.adminPanel.closeProductModal()">&times;</span>
             <h2 id="productModalTitle">Add Product</h2>
             <form id="productForm">
                 <input type="hidden" id="productId">
@@ -211,6 +275,19 @@
                 </div>
                 <button type="submit" class="btn-primary">Save Product</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="window.adminPanel.closeDeleteModal()">&times;</span>
+            <h2>Confirm Deletion</h2>
+            <p id="deleteMessage">Are you sure you want to delete this order?</p>
+            <div class="modal-actions">
+                <button class="btn-danger" id="confirmDeleteBtn">Delete</button>
+                <button class="btn-primary" onclick="window.adminPanel.closeDeleteModal()">Cancel</button>
+            </div>
         </div>
     </div>
 
