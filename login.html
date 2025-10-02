@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Fire Diamond Topup</title>
     <link rel="stylesheet" href="styles/main.css">
 </head>
-
 <body>
     <nav class="navbar">
         <div class="nav-container">
@@ -20,7 +18,7 @@
     <div class="auth-container">
         <div class="auth-card">
             <h2>Login to Your Account</h2>
-
+            
             <form id="loginForm">
                 <div class="form-group">
                     <label>Email:</label>
@@ -64,9 +62,10 @@
         </div>
     </div>
 
+    <!-- Load scripts in correct order -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/debug.js"></script>
 </body>
-
 </html>
