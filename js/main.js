@@ -1,1 +1,198 @@
+// Main page functionality
+class MainPage {
+    constructor() {
+        this.categories = [];
+        this.products = [];
+        this.init();
+    }
 
+    async init() {
+        await this.loadCategories();
+        await this.loadProducts();
+        this.setupEventListeners();
+        this.setupModal();
+    }
+
+    async loadCategories() {
+        const { data, error } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('is_active', true);
+
+        if (error) {
+            console.error('Error loading categories:', error);
+            return;
+        }
+
+        this.categories = data;
+        this.renderCategories();
+    }
+
+    async loadProducts() {
+        const { data, error } = await supabase
+            .from('products')
+            .select(`
+                *,
+                categories (name)
+            `)
+            .eq('is_active', true);
+
+        if (error) {
+            console.error('Error loading products:', error);
+            return;
+        }
+
+        this.products = data;
+        this.renderProducts();
+    }
+
+    renderCategories() {
+        const filterContainer = document.querySelector('.category-filter');
+        if (!filterContainer) return;
+
+        // Clear existing buttons (except "All")
+        const allBtn = filterContainer.querySelector('[data-category="all"]');
+        filterContainer.innerHTML = '';
+        filterContainer.appendChild(allBtn);
+
+        this.categories.forEach(category => {
+            const button = document.createElement('button');
+            button.className = 'filter-btn';
+            button.textContent = category.name;
+            button.setAttribute('data-category', category.id);
+            button.addEventListener('click', () => this.filterProducts(category.id));
+            filterContainer.appendChild(button);
+        });
+    }
+
+    renderProducts(categoryId = 'all') {
+        const productsGrid = document.getElementById('productsGrid');
+        if (!productsGrid) return;
+
+        const filteredProducts = categoryId === 'all' ?
+            this.products :
+            this.products.filter(product => product.category_id === categoryId);
+
+        productsGrid.innerHTML = filteredProducts.map(product => `
+            <div class="product-card" data-product-id="${product.id}">
+                <h3>${product.name}</h3>
+                <p class="diamonds">${product.diamonds_count} Diamonds</p>
+                <p class="price">৳${product.price}</p>
+                <p class="description">${product.description || ''}</p>
+                <button class="buy-btn" onclick="mainPage.openProductModal('${product.id}')">
+                    Buy Now
+                </button>
+            </div>
+        `).join('');
+    }
+
+    filterProducts(categoryId) {
+        // Update active filter button
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+
+        this.renderProducts(categoryId);
+    }
+
+    setupModal() {
+        this.modal = document.getElementById('productModal');
+        this.closeBtn = this.modal.querySelector('.close');
+        this.paymentForm = document.getElementById('paymentForm');
+
+        this.closeBtn.addEventListener('click', () => this.closeModal());
+        window.addEventListener('click', (e) => {
+            if (e.target === this.modal) this.closeModal();
+        });
+
+        this.paymentForm.addEventListener('submit', (e) => this.submitOrder(e));
+    }
+
+    openProductModal(productId) {
+        const product = this.products.find(p => p.id === productId);
+        if (!product) return;
+
+        document.getElementById('modalProductName').textContent = product.name;
+        document.getElementById('modalProductDesc').textContent = product.description || '';
+        document.getElementById('modalProductPrice').textContent = product.price;
+        document.getElementById('modalProductDiamonds').textContent = product.diamonds_count;
+        document.getElementById('selectedProductId').value = productId;
+
+        this.modal.style.display = 'block';
+    }
+
+    closeModal() {
+        this.modal.style.display = 'none';
+        this.paymentForm.reset();
+    }
+
+    async submitOrder(e) {
+        e.preventDefault();
+
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) {
+            alert('Please login to place an order');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const orderData = {
+            user_id: currentUser.id,
+            product_id: document.getElementById('selectedProductId').value,
+            payment_method: document.getElementById('paymentMethod').value,
+            payment_number: document.getElementById('paymentNumber').value,
+            transaction_id: document.getElementById('transactionId').value,
+            game_id: document.getElementById('gameId').value,
+            status: 'pending'
+        };
+
+        try {
+            const { data, error } = await supabase
+                .from('orders')
+                .insert([orderData])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            alert('Order placed successfully! We will process it shortly.');
+            this.closeModal();
+
+            // Redirect to account page to see the order
+            window.location.href = 'account.html';
+        } catch (error) {
+            console.error('Error placing order:', error);
+            alert('Error placing order. Please try again.');
+        }
+    }
+
+    setupEventListeners() {
+        // Mobile menu toggle
+        const hamburger = document.querySelector('.hamburger');
+        const navMenu = document.querySelector('.nav-menu');
+
+        if (hamburger && navMenu) {
+            hamburger.addEventListener('click', () => {
+                navMenu.style.display = navMenu.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    }
+}
+
+// Initialize main page
+const mainPage = new MainPage();
