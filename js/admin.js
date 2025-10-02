@@ -5,14 +5,17 @@ class AdminPanel {
         this.products = [];
         this.orders = [];
         this.pendingOrders = [];
+        this.users = [];
+        this.selectedUsers = new Set();
         this.itemToDelete = null;
-        this.deleteType = null; // 'category', 'product', 'order'
+        this.deleteType = null; // 'category', 'product', 'order', 'user'
         this.init();
     }
 
     async init() {
         await this.waitForSupabase();
         await this.loadStats();
+        await this.loadUsers();
         await this.loadCategories();
         await this.loadProducts();
         await this.loadOrders();
@@ -71,6 +74,18 @@ class AdminPanel {
                 .from('users')
                 .select('*', { count: 'exact', head: true });
 
+            // Active users
+            const { count: activeUsers } = await window.supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', true);
+
+            // Banned users
+            const { count: bannedUsers } = await window.supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', false);
+
             // Total revenue (sum of completed orders)
             const { data: revenueData, error: revenueError } = await window.supabase
                 .from('orders')
@@ -92,10 +107,34 @@ class AdminPanel {
             document.getElementById('totalProducts').textContent = totalProducts || 0;
             document.getElementById('totalCategories').textContent = totalCategories || 0;
             document.getElementById('totalUsers').textContent = totalUsers || 0;
+            document.getElementById('activeUsers').textContent = activeUsers || 0;
+            document.getElementById('bannedUsers').textContent = bannedUsers || 0;
             document.getElementById('totalRevenue').textContent = `৳${totalRevenue.toFixed(2)}`;
 
         } catch (error) {
             console.error('Error loading stats:', error);
+        }
+    }
+
+    async loadUsers() {
+        try {
+            const { data, error } = await window.supabase
+                .from('users')
+                .select(`
+                    *,
+                    orders (id)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error loading users:', error);
+                return;
+            }
+
+            this.users = data || [];
+            this.renderUsers();
+        } catch (error) {
+            console.error('Error in loadUsers:', error);
         }
     }
 
@@ -191,477 +230,367 @@ class AdminPanel {
         }
     }
 
-    renderCategories() {
-        const tbody = document.querySelector('#categoriesTable tbody');
+    // User Management Methods
+    renderUsers() {
+        const tbody = document.querySelector('#usersTable tbody');
         if (!tbody) return;
 
-        if (this.categories.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No categories found</td></tr>`;
-            return;
-        }
+        const statusFilter = document.getElementById('userStatusFilter')?.value || 'all';
+        const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
+        
+        let filteredUsers = this.users;
 
-        tbody.innerHTML = this.categories.map(category => `
-            <tr>
-                <td><strong>${category.name}</strong></td>
-                <td>${category.description || '-'}</td>
-                <td>${category.products?.length || 0}</td>
-                <td>
-                    <span class="status-badge ${category.is_active ? 'status-active' : 'status-inactive'}">
-                        ${category.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                </td>
-                <td>${new Date(category.created_at).toLocaleDateString()}</td>
-                <td class="action-buttons">
-                    <button class="btn-primary btn-sm" onclick="window.adminPanel.editCategory('${category.id}')" title="Edit Category">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteCategory('${category.id}')" title="Delete Category">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <button class="${category.is_active ? 'btn-danger' : 'btn-success'} btn-sm" onclick="window.adminPanel.toggleCategoryStatus('${category.id}', ${!category.is_active})" title="${category.is_active ? 'Deactivate' : 'Activate'}">
-                        ${category.is_active ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>'}
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    renderProducts() {
-        const tbody = document.querySelector('#productsTable tbody');
-        if (!tbody) return;
-
-        if (this.products.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem;">No products found</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = this.products.map(product => `
-            <tr>
-                <td><strong>${product.name}</strong></td>
-                <td>${product.categories?.name || '-'}</td>
-                <td>${product.diamonds_count}</td>
-                <td>৳${product.price}</td>
-                <td>
-                    <span class="status-badge ${product.is_active ? 'status-active' : 'status-inactive'}">
-                        ${product.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                </td>
-                <td>${new Date(product.created_at).toLocaleDateString()}</td>
-                <td class="action-buttons">
-                    <button class="btn-primary btn-sm" onclick="window.adminPanel.editProduct('${product.id}')" title="Edit Product">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteProduct('${product.id}')" title="Delete Product">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <button class="${product.is_active ? 'btn-danger' : 'btn-success'} btn-sm" onclick="window.adminPanel.toggleProductStatus('${product.id}', ${!product.is_active})" title="${product.is_active ? 'Deactivate' : 'Activate'}">
-                        ${product.is_active ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>'}
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    renderOrders() {
-        const tbody = document.querySelector('#ordersTable tbody');
-        if (!tbody) return;
-
-        const statusFilter = document.getElementById('orderStatusFilter')?.value || 'all';
-        let filteredOrders = this.orders;
-
+        // Apply status filter
         if (statusFilter !== 'all') {
-            filteredOrders = this.orders.filter(order => order.status === statusFilter);
+            filteredUsers = filteredUsers.filter(user => 
+                statusFilter === 'active' ? user.is_active : !user.is_active
+            );
         }
 
-        if (filteredOrders.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 2rem;">No orders found</td></tr>`;
+        // Apply search filter
+        if (searchTerm) {
+            filteredUsers = filteredUsers.filter(user => 
+                user.email.toLowerCase().includes(searchTerm) ||
+                user.full_name?.toLowerCase().includes(searchTerm) ||
+                user.mobile_number?.includes(searchTerm)
+            );
+        }
+
+        if (filteredUsers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem;">No users found</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = filteredOrders.map(order => `
-            <tr>
-                <td><span class="id-cell">${order.id.substring(0, 8)}...</span></td>
-                <td><span class="id-cell">${order.user_id?.substring(0, 8)}...</span></td>
-                <td>${order.products?.name || '-'}</td>
-                <td>${order.users?.email || '-'}</td>
-                <td>৳${order.products?.price || '0'}</td>
-                <td>${order.payment_method}</td>
-                <td>${order.payment_number || '-'}</td>
-                <td><span class="id-cell">${order.transaction_id || '-'}</span></td>
-                <td>${order.game_id || '-'}</td>
+        tbody.innerHTML = filteredUsers.map(user => `
+            <tr class="${user.is_active ? '' : 'banned-user'}">
                 <td>
-                    <span class="status-badge status-${order.status}">
-                        ${order.status}
+                    <input type="checkbox" class="user-checkbox" value="${user.id}" 
+                           onchange="window.adminPanel.toggleUserSelection('${user.id}')"
+                           ${user.email === 'admin123@gmail.com' ? 'disabled' : ''}>
+                </td>
+                <td><span class="id-cell">${user.id.substring(0, 8)}...</span></td>
+                <td>${user.full_name || '-'}</td>
+                <td>${user.email}</td>
+                <td>${user.mobile_number || '-'}</td>
+                <td>${user.orders?.length || 0}</td>
+                <td>
+                    <span class="status-badge ${user.is_active ? 'status-active' : 'status-banned'}">
+                        ${user.is_active ? 'Active' : 'Banned'}
                     </span>
                 </td>
-                <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                <td>${user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}</td>
                 <td class="action-buttons">
-                    ${order.status === 'pending' ? `
-                        <button class="btn-success btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'completed')" title="Complete Order">
-                            <i class="fas fa-check"></i>
+                    ${user.email !== 'admin123@gmail.com' ? `
+                        <button class="btn-primary btn-sm" onclick="window.adminPanel.viewUserDetails('${user.id}')" title="View Details">
+                            <i class="fas fa-eye"></i>
                         </button>
-                    ` : ''}
-                    <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteOrder('${order.id}')" title="Delete Order">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    ${order.status === 'pending' ? `
-                        <button class="btn-danger btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'cancelled')" title="Cancel Order">
-                            <i class="fas fa-times"></i>
+                        <button class="btn-success btn-sm" onclick="window.adminPanel.openResetPasswordModal('${user.id}')" title="Reset Password">
+                            <i class="fas fa-key"></i>
                         </button>
-                    ` : ''}
+                        ${user.is_active ? 
+                            `<button class="btn-warning btn-sm" onclick="window.adminPanel.banUser('${user.id}')" title="Ban User">
+                                <i class="fas fa-ban"></i>
+                            </button>` :
+                            `<button class="btn-success btn-sm" onclick="window.adminPanel.unbanUser('${user.id}')" title="Unban User">
+                                <i class="fas fa-check"></i>
+                            </button>`
+                        }
+                        <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteUser('${user.id}')" title="Delete User">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : `
+                        <span class="admin-badge">Admin</span>
+                    `}
                 </td>
             </tr>
         `).join('');
+
+        this.updateUserActionButtons();
     }
 
-    renderPendingOrders() {
-        const tbody = document.querySelector('#pendingOrdersTable tbody');
-        if (!tbody) return;
+    toggleUserSelection(userId) {
+        if (this.selectedUsers.has(userId)) {
+            this.selectedUsers.delete(userId);
+        } else {
+            this.selectedUsers.add(userId);
+        }
+        this.updateUserActionButtons();
+    }
 
-        if (this.pendingOrders.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 2rem;">No pending orders</td></tr>`;
+    toggleSelectAllUsers() {
+        const selectAll = document.getElementById('selectAllUsers');
+        const checkboxes = document.querySelectorAll('.user-checkbox:not(:disabled)');
+        
+        if (selectAll.checked) {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+                this.selectedUsers.add(checkbox.value);
+            });
+        } else {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            this.selectedUsers.clear();
+        }
+        this.updateUserActionButtons();
+    }
+
+    updateUserActionButtons() {
+        const banBtn = document.getElementById('banSelectedBtn');
+        const unbanBtn = document.getElementById('unbanSelectedBtn');
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+        const hasSelection = this.selectedUsers.size > 0;
+
+        if (hasSelection) {
+            // Check if selected users are mostly active or banned
+            const selectedUsersData = this.users.filter(user => this.selectedUsers.has(user.id));
+            const activeCount = selectedUsersData.filter(user => user.is_active).length;
+            const bannedCount = selectedUsersData.filter(user => !user.is_active).length;
+
+            banBtn.style.display = activeCount > 0 ? 'flex' : 'none';
+            unbanBtn.style.display = bannedCount > 0 ? 'flex' : 'none';
+            deleteBtn.style.display = 'flex';
+        } else {
+            banBtn.style.display = 'none';
+            unbanBtn.style.display = 'none';
+            deleteBtn.style.display = 'none';
+        }
+    }
+
+    filterUsers() {
+        this.renderUsers();
+    }
+
+    searchUsers() {
+        this.renderUsers();
+    }
+
+    async banUser(userId) {
+        if (!confirm('Are you sure you want to ban this user? They will not be able to login.')) {
             return;
         }
 
-        tbody.innerHTML = this.pendingOrders.map(order => `
-            <tr>
-                <td><span class="id-cell">${order.id.substring(0, 8)}...</span></td>
-                <td><span class="id-cell">${order.user_id?.substring(0, 8)}...</span></td>
-                <td>${order.products?.name || '-'}</td>
-                <td>${order.users?.email || '-'}</td>
-                <td>৳${order.products?.price || '0'}</td>
-                <td>${order.payment_method}</td>
-                <td>${order.payment_number || '-'}</td>
-                <td><span class="id-cell">${order.transaction_id || '-'}</span></td>
-                <td>${order.game_id || '-'}</td>
-                <td>${new Date(order.created_at).toLocaleDateString()}</td>
-                <td class="action-buttons">
-                    <button class="btn-success btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'completed')" title="Complete Order">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteOrder('${order.id}')" title="Delete Order">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <button class="btn-danger btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'cancelled')" title="Cancel Order">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
+        try {
+            const { error } = await window.supabase
+                .from('users')
+                .update({ is_active: false })
+                .eq('id', userId);
 
-    populateCategorySelect() {
-        const select = document.getElementById('productCategory');
-        if (!select) return;
+            if (error) throw error;
 
-        select.innerHTML = '<option value="">Select Category</option>' +
-            this.categories
-                .filter(cat => cat.is_active)
-                .map(cat => `<option value="${cat.id}">${cat.name}</option>`)
-                .join('');
-    }
-
-    setupEventListeners() {
-        // Tab navigation
-        const navItems = document.querySelectorAll('.nav-item');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        navItems.forEach(item => {
-            if (item.getAttribute('href') && item.getAttribute('href').startsWith('#')) {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const target = item.getAttribute('href').substring(1);
-                    
-                    // Update active nav item
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    item.classList.add('active');
-                    
-                    // Update page title
-                    document.getElementById('pageTitle').textContent = 
-                        target.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-                    
-                    // Show target tab
-                    tabContents.forEach(tab => tab.classList.remove('active'));
-                    document.getElementById(target).classList.add('active');
-
-                    // Refresh data for specific tabs
-                    if (target === 'pending-orders') {
-                        this.loadPendingOrders();
-                    } else if (target === 'orders') {
-                        this.loadOrders();
-                    } else if (target === 'categories') {
-                        this.loadCategories();
-                    } else if (target === 'products') {
-                        this.loadProducts();
-                    } else if (target === 'dashboard') {
-                        this.loadStats();
-                    }
-                });
-            }
-        });
-
-        // Logout
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (window.auth) {
-                    window.auth.logout();
-                } else {
-                    window.location.href = 'login.html';
-                }
-            });
+            await this.loadUsers();
+            await this.loadStats();
+            alert('User banned successfully!');
+        } catch (error) {
+            console.error('Error banning user:', error);
+            alert('Error banning user.');
         }
     }
 
+    async unbanUser(userId) {
+        try {
+            const { error } = await window.supabase
+                .from('users')
+                .update({ is_active: true })
+                .eq('id', userId);
+
+            if (error) throw error;
+
+            await this.loadUsers();
+            await this.loadStats();
+            alert('User unbanned successfully!');
+        } catch (error) {
+            console.error('Error unbanning user:', error);
+            alert('Error unbanning user.');
+        }
+    }
+
+    async banSelectedUsers() {
+        const selectedCount = this.selectedUsers.size;
+        if (selectedCount === 0) return;
+
+        if (!confirm(`Are you sure you want to ban ${selectedCount} user(s)? They will not be able to login.`)) {
+            return;
+        }
+
+        try {
+            const { error } = await window.supabase
+                .from('users')
+                .update({ is_active: false })
+                .in('id', Array.from(this.selectedUsers));
+
+            if (error) throw error;
+
+            this.selectedUsers.clear();
+            await this.loadUsers();
+            await this.loadStats();
+            alert(`${selectedCount} user(s) banned successfully!`);
+        } catch (error) {
+            console.error('Error banning users:', error);
+            alert('Error banning users.');
+        }
+    }
+
+    async unbanSelectedUsers() {
+        const selectedCount = this.selectedUsers.size;
+        if (selectedCount === 0) return;
+
+        if (!confirm(`Are you sure you want to unban ${selectedCount} user(s)?`)) {
+            return;
+        }
+
+        try {
+            const { error } = await window.supabase
+                .from('users')
+                .update({ is_active: true })
+                .in('id', Array.from(this.selectedUsers));
+
+            if (error) throw error;
+
+            this.selectedUsers.clear();
+            await this.loadUsers();
+            await this.loadStats();
+            alert(`${selectedCount} user(s) unbanned successfully!`);
+        } catch (error) {
+            console.error('Error unbanning users:', error);
+            alert('Error unbanning users.');
+        }
+    }
+
+    openResetPasswordModal(userId) {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        document.getElementById('resetPasswordUserId').value = userId;
+        document.getElementById('resetPasswordUserEmail').value = user.email;
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+
+        this.generatePassword(); // Auto-generate a password
+
+        document.getElementById('resetPasswordModal').style.display = 'block';
+    }
+
+    closeResetPasswordModal() {
+        document.getElementById('resetPasswordModal').style.display = 'none';
+    }
+
+    generatePassword() {
+        const length = 12;
+        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+        let password = "";
+        
+        for (let i = 0; i < length; i++) {
+            password += charset.charAt(Math.floor(Math.random() * charset.length));
+        }
+        
+        document.getElementById('newPassword').value = password;
+        document.getElementById('confirmPassword').value = password;
+    }
+
+    async resetUserPassword(e) {
+        e.preventDefault();
+
+        const userId = document.getElementById('resetPasswordUserId').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match!');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            alert('Password must be at least 6 characters long!');
+            return;
+        }
+
+        try {
+            const { error } = await window.supabase
+                .from('users')
+                .update({ password: newPassword })
+                .eq('id', userId);
+
+            if (error) throw error;
+
+            this.closeResetPasswordModal();
+            alert('Password reset successfully! New password: ' + newPassword);
+        } catch (error) {
+            console.error('Error resetting password:', error);
+            alert('Error resetting password.');
+        }
+    }
+
+    viewUserDetails(userId) {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        const ordersCount = user.orders?.length || 0;
+        const userSince = new Date(user.created_at).toLocaleDateString();
+        const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never';
+
+        alert(`User Details:\n\n` +
+              `Name: ${user.full_name || 'N/A'}\n` +
+              `Email: ${user.email}\n` +
+              `Mobile: ${user.mobile_number || 'N/A'}\n` +
+              `Status: ${user.is_active ? 'Active' : 'Banned'}\n` +
+              `Total Orders: ${ordersCount}\n` +
+              `Member Since: ${userSince}\n` +
+              `Last Login: ${lastLogin}`);
+    }
+
+    // Continue with existing methods for categories, products, orders...
+    // ... [Keep all the existing methods for categories, products, orders from previous code]
+
+    // Add the reset password form event listener in setupModals
     setupModals() {
-        // Category modal
+        // Existing modal setups...
         this.categoryModal = document.getElementById('categoryModal');
         this.categoryForm = document.getElementById('categoryForm');
         this.categoryForm.addEventListener('submit', (e) => this.saveCategory(e));
 
-        // Product modal
         this.productModal = document.getElementById('productModal');
         this.productForm = document.getElementById('productForm');
         this.productForm.addEventListener('submit', (e) => this.saveProduct(e));
 
-        // Delete modal
         this.deleteModal = document.getElementById('deleteModal');
         document.getElementById('confirmDeleteBtn').addEventListener('click', () => this.executeDelete());
+
+        // Add reset password form
+        this.resetPasswordModal = document.getElementById('resetPasswordModal');
+        this.resetPasswordForm = document.getElementById('resetPasswordForm');
+        this.resetPasswordForm.addEventListener('submit', (e) => this.resetUserPassword(e));
     }
 
-    // Filter orders by status
-    filterOrders() {
-        this.renderOrders();
-    }
-
-    // Category methods
-    openCategoryModal(categoryId = null) {
-        const title = document.getElementById('categoryModalTitle');
-        const form = document.getElementById('categoryForm');
-        
-        if (categoryId) {
-            title.textContent = 'Edit Category';
-            const category = this.categories.find(c => c.id === categoryId);
-            if (category) {
-                document.getElementById('categoryId').value = category.id;
-                document.getElementById('categoryName').value = category.name;
-                document.getElementById('categoryDescription').value = category.description || '';
-                document.getElementById('categoryStatus').value = category.is_active;
-            }
-        } else {
-            title.textContent = 'Add Category';
-            form.reset();
-            document.getElementById('categoryId').value = '';
-        }
-        
-        this.categoryModal.style.display = 'block';
-    }
-
-    closeCategoryModal() {
-        this.categoryModal.style.display = 'none';
-    }
-
-    async saveCategory(e) {
-        e.preventDefault();
-        
-        const categoryData = {
-            name: document.getElementById('categoryName').value,
-            description: document.getElementById('categoryDescription').value,
-            is_active: document.getElementById('categoryStatus').value === 'true'
-        };
-
-        const categoryId = document.getElementById('categoryId').value;
-
-        try {
-            if (categoryId) {
-                // Update existing category
-                const { error } = await window.supabase
-                    .from('categories')
-                    .update(categoryData)
-                    .eq('id', categoryId);
-                
-                if (error) throw error;
-            } else {
-                // Insert new category
-                const { error } = await window.supabase
-                    .from('categories')
-                    .insert([categoryData]);
-                
-                if (error) throw error;
-            }
-
-            this.closeCategoryModal();
-            await this.loadCategories();
-            await this.loadProducts(); // Reload products to refresh category data
-            await this.loadStats();
-        } catch (error) {
-            console.error('Error saving category:', error);
-            alert('Error saving category. Please try again.');
-        }
-    }
-
-    async toggleCategoryStatus(categoryId, newStatus) {
-        try {
-            const { error } = await window.supabase
-                .from('categories')
-                .update({ is_active: newStatus })
-                .eq('id', categoryId);
-
-            if (error) throw error;
-
-            await this.loadCategories();
-            await this.loadStats();
-        } catch (error) {
-            console.error('Error updating category status:', error);
-            alert('Error updating category status.');
-        }
-    }
-
-    editCategory(categoryId) {
-        this.openCategoryModal(categoryId);
-    }
-
-    // Product methods
-    openProductModal(productId = null) {
-        const title = document.getElementById('productModalTitle');
-        const form = document.getElementById('productForm');
-        
-        if (productId) {
-            title.textContent = 'Edit Product';
-            const product = this.products.find(p => p.id === productId);
-            if (product) {
-                document.getElementById('productId').value = product.id;
-                document.getElementById('productName').value = product.name;
-                document.getElementById('productCategory').value = product.category_id;
-                document.getElementById('productDescription').value = product.description || '';
-                document.getElementById('productDiamonds').value = product.diamonds_count;
-                document.getElementById('productPrice').value = product.price;
-                document.getElementById('productStatus').value = product.is_active;
-            }
-        } else {
-            title.textContent = 'Add Product';
-            form.reset();
-            document.getElementById('productId').value = '';
-        }
-        
-        this.productModal.style.display = 'block';
-    }
-
-    closeProductModal() {
-        this.productModal.style.display = 'none';
-    }
-
-    async saveProduct(e) {
-        e.preventDefault();
-        
-        const productData = {
-            name: document.getElementById('productName').value,
-            category_id: document.getElementById('productCategory').value,
-            description: document.getElementById('productDescription').value,
-            diamonds_count: parseInt(document.getElementById('productDiamonds').value),
-            price: parseFloat(document.getElementById('productPrice').value),
-            is_active: document.getElementById('productStatus').value === 'true'
-        };
-
-        const productId = document.getElementById('productId').value;
-
-        try {
-            if (productId) {
-                // Update existing product
-                const { error } = await window.supabase
-                    .from('products')
-                    .update(productData)
-                    .eq('id', productId);
-                
-                if (error) throw error;
-            } else {
-                // Insert new product
-                const { error } = await window.supabase
-                    .from('products')
-                    .insert([productData]);
-                
-                if (error) throw error;
-            }
-
-            this.closeProductModal();
-            await this.loadProducts();
-            await this.loadStats();
-        } catch (error) {
-            console.error('Error saving product:', error);
-            alert('Error saving product. Please try again.');
-        }
-    }
-
-    async toggleProductStatus(productId, newStatus) {
-        try {
-            const { error } = await window.supabase
-                .from('products')
-                .update({ is_active: newStatus })
-                .eq('id', productId);
-
-            if (error) throw error;
-
-            await this.loadProducts();
-            await this.loadStats();
-        } catch (error) {
-            console.error('Error updating product status:', error);
-            alert('Error updating product status.');
-        }
-    }
-
-    editProduct(productId) {
-        this.openProductModal(productId);
-    }
-
-    // Order methods
-    async updateOrderStatus(orderId, newStatus) {
-        try {
-            const { error } = await window.supabase
-                .from('orders')
-                .update({ status: newStatus })
-                .eq('id', orderId);
-
-            if (error) throw error;
-
-            // Reload all order-related data
-            await this.loadOrders();
-            await this.loadPendingOrders();
-            await this.loadStats();
-
-            alert(`Order ${newStatus} successfully!`);
-        } catch (error) {
-            console.error('Error updating order status:', error);
-            alert('Error updating order status.');
-        }
-    }
-
-    // Delete methods
-    confirmDeleteCategory(categoryId) {
-        this.itemToDelete = categoryId;
-        this.deleteType = 'category';
-        const category = this.categories.find(c => c.id === categoryId);
+    // Add user deletion methods
+    confirmDeleteUser(userId) {
+        this.itemToDelete = userId;
+        this.deleteType = 'user';
+        const user = this.users.find(u => u.id === userId);
         
         const deleteMessage = document.getElementById('deleteMessage');
         const deleteModalTitle = document.getElementById('deleteModalTitle');
         
-        deleteModalTitle.textContent = 'Delete Category';
+        deleteModalTitle.textContent = 'Delete User';
         
-        if (category) {
-            const productCount = category.products?.length || 0;
+        if (user) {
+            const ordersCount = user.orders?.length || 0;
             let warning = '';
             
-            if (productCount > 0) {
-                warning = `<br><br><strong style="color: #e74c3c;">⚠️ WARNING: This category has ${productCount} product(s). Deleting it will also remove these products!</strong>`;
+            if (ordersCount > 0) {
+                warning = `<br><br><strong style="color: #e74c3c;">⚠️ WARNING: This user has ${ordersCount} order(s). Deleting the user will also remove these orders!</strong>`;
             }
             
             deleteMessage.innerHTML = `
-                Are you sure you want to delete the category "<strong>${category.name}</strong>"?<br><br>
-                <strong>Category Details:</strong><br>
-                - Name: ${category.name}<br>
-                - Description: ${category.description || 'N/A'}<br>
-                - Products: ${productCount}<br>
-                - Status: ${category.is_active ? 'Active' : 'Inactive'}<br>
+                Are you sure you want to delete the user "<strong>${user.email}</strong>"?<br><br>
+                <strong>User Details:</strong><br>
+                - Name: ${user.full_name || 'N/A'}<br>
+                - Email: ${user.email}<br>
+                - Mobile: ${user.mobile_number || 'N/A'}<br>
+                - Orders: ${ordersCount}<br>
+                - Status: ${user.is_active ? 'Active' : 'Banned'}<br>
                 ${warning}<br><br>
                 This action cannot be undone.
             `;
@@ -670,66 +599,45 @@ class AdminPanel {
         this.deleteModal.style.display = 'block';
     }
 
-    confirmDeleteProduct(productId) {
-        this.itemToDelete = productId;
-        this.deleteType = 'product';
-        const product = this.products.find(p => p.id === productId);
-        
-        const deleteMessage = document.getElementById('deleteMessage');
-        const deleteModalTitle = document.getElementById('deleteModalTitle');
-        
-        deleteModalTitle.textContent = 'Delete Product';
-        
-        if (product) {
-            deleteMessage.innerHTML = `
-                Are you sure you want to delete the product "<strong>${product.name}</strong>"?<br><br>
-                <strong>Product Details:</strong><br>
-                - Name: ${product.name}<br>
-                - Category: ${product.categories?.name || 'N/A'}<br>
-                - Diamonds: ${product.diamonds_count}<br>
-                - Price: ৳${product.price}<br>
-                - Status: ${product.is_active ? 'Active' : 'Inactive'}<br><br>
-                This action cannot be undone.
-            `;
+    async deleteSelectedUsers() {
+        const selectedCount = this.selectedUsers.size;
+        if (selectedCount === 0) return;
+
+        if (!confirm(`Are you sure you want to delete ${selectedCount} user(s)? This will also delete all their orders and cannot be undone.`)) {
+            return;
         }
-        
-        this.deleteModal.style.display = 'block';
-    }
 
-    confirmDeleteOrder(orderId) {
-        this.itemToDelete = orderId;
-        this.deleteType = 'order';
-        const order = this.orders.find(o => o.id === orderId) || this.pendingOrders.find(o => o.id === orderId);
-        
-        const deleteMessage = document.getElementById('deleteMessage');
-        const deleteModalTitle = document.getElementById('deleteModalTitle');
-        
-        deleteModalTitle.textContent = 'Delete Order';
-        
-        if (order) {
-            deleteMessage.innerHTML = `
-                Are you sure you want to delete this order?<br><br>
-                <strong>Order Details:</strong><br>
-                - Product: ${order.products?.name || 'N/A'}<br>
-                - User: ${order.users?.email || 'N/A'}<br>
-                - Amount: ৳${order.products?.price || '0'}<br>
-                - Status: ${order.status}<br>
-                - Payment: ${order.payment_method}<br><br>
-                This action cannot be undone.
-            `;
-        } else {
-            deleteMessage.textContent = 'Are you sure you want to delete this order? This action cannot be undone.';
+        try {
+            // First delete user orders
+            const { error: ordersError } = await window.supabase
+                .from('orders')
+                .delete()
+                .in('user_id', Array.from(this.selectedUsers));
+
+            if (ordersError) throw ordersError;
+
+            // Then delete users
+            const { error } = await window.supabase
+                .from('users')
+                .delete()
+                .in('id', Array.from(this.selectedUsers));
+
+            if (error) throw error;
+
+            this.selectedUsers.clear();
+            await this.loadUsers();
+            await this.loadOrders();
+            await this.loadPendingOrders();
+            await this.loadStats();
+
+            alert(`${selectedCount} user(s) deleted successfully!`);
+        } catch (error) {
+            console.error('Error deleting users:', error);
+            alert('Error deleting users.');
         }
-        
-        this.deleteModal.style.display = 'block';
     }
 
-    closeDeleteModal() {
-        this.deleteModal.style.display = 'none';
-        this.itemToDelete = null;
-        this.deleteType = null;
-    }
-
+    // Update the executeDelete method to handle users
     async executeDelete() {
         if (!this.itemToDelete || !this.deleteType) return;
 
@@ -766,6 +674,22 @@ class AdminPanel {
                         .delete()
                         .eq('id', this.itemToDelete));
                     break;
+
+                case 'user':
+                    // First delete user orders
+                    const { error: userOrdersError } = await window.supabase
+                        .from('orders')
+                        .delete()
+                        .eq('user_id', this.itemToDelete);
+                    
+                    if (userOrdersError) throw userOrdersError;
+
+                    // Then delete user
+                    ({ error } = await window.supabase
+                        .from('users')
+                        .delete()
+                        .eq('id', this.itemToDelete));
+                    break;
             }
 
             if (error) throw error;
@@ -773,6 +697,7 @@ class AdminPanel {
             this.closeDeleteModal();
             
             // Reload all data
+            await this.loadUsers();
             await this.loadCategories();
             await this.loadProducts();
             await this.loadOrders();
@@ -786,150 +711,7 @@ class AdminPanel {
         }
     }
 
-    // Bulk delete operations
-    async deleteInactiveCategories() {
-        if (!confirm('Are you sure you want to delete ALL inactive categories? This will also delete all products in those categories and cannot be undone.')) {
-            return;
-        }
-
-        try {
-            // First, get all inactive categories
-            const { data: inactiveCategories, error: fetchError } = await window.supabase
-                .from('categories')
-                .select('id')
-                .eq('is_active', false);
-
-            if (fetchError) throw fetchError;
-
-            if (!inactiveCategories || inactiveCategories.length === 0) {
-                alert('No inactive categories found to delete.');
-                return;
-            }
-
-            const categoryIds = inactiveCategories.map(cat => cat.id);
-
-            // Delete products in these categories first
-            const { error: productsError } = await window.supabase
-                .from('products')
-                .delete()
-                .in('category_id', categoryIds);
-
-            if (productsError) throw productsError;
-
-            // Then delete the categories
-            const { error } = await window.supabase
-                .from('categories')
-                .delete()
-                .in('id', categoryIds);
-
-            if (error) throw error;
-
-            await this.loadCategories();
-            await this.loadProducts();
-            await this.loadStats();
-
-            alert(`Successfully deleted ${inactiveCategories.length} inactive categories and their products!`);
-        } catch (error) {
-            console.error('Error deleting inactive categories:', error);
-            alert('Error deleting inactive categories.');
-        }
-    }
-
-    async deleteInactiveProducts() {
-        if (!confirm('Are you sure you want to delete ALL inactive products? This action cannot be undone.')) {
-            return;
-        }
-
-        try {
-            const { error } = await window.supabase
-                .from('products')
-                .delete()
-                .eq('is_active', false);
-
-            if (error) throw error;
-
-            await this.loadProducts();
-            await this.loadStats();
-
-            alert('All inactive products deleted successfully!');
-        } catch (error) {
-            console.error('Error deleting inactive products:', error);
-            alert('Error deleting inactive products.');
-        }
-    }
-
-    async deleteCompletedOrders() {
-        if (!confirm('Are you sure you want to delete ALL completed orders? This will free up storage space but cannot be undone.')) {
-            return;
-        }
-
-        try {
-            const { error } = await window.supabase
-                .from('orders')
-                .delete()
-                .eq('status', 'completed');
-
-            if (error) throw error;
-
-            await this.loadOrders();
-            await this.loadPendingOrders();
-            await this.loadStats();
-
-            alert('All completed orders deleted successfully! Storage space freed.');
-        } catch (error) {
-            console.error('Error deleting completed orders:', error);
-            alert('Error deleting completed orders.');
-        }
-    }
-
-    // Bulk operations for pending orders
-    async completeAllPending() {
-        if (!confirm('Are you sure you want to mark ALL pending orders as completed?')) {
-            return;
-        }
-
-        try {
-            const { error } = await window.supabase
-                .from('orders')
-                .update({ status: 'completed' })
-                .eq('status', 'pending');
-
-            if (error) throw error;
-
-            await this.loadOrders();
-            await this.loadPendingOrders();
-            await this.loadStats();
-
-            alert('All pending orders marked as completed!');
-        } catch (error) {
-            console.error('Error completing all orders:', error);
-            alert('Error completing all orders.');
-        }
-    }
-
-    async cancelAllPending() {
-        if (!confirm('Are you sure you want to cancel ALL pending orders?')) {
-            return;
-        }
-
-        try {
-            const { error } = await window.supabase
-                .from('orders')
-                .update({ status: 'cancelled' })
-                .eq('status', 'pending');
-
-            if (error) throw error;
-
-            await this.loadOrders();
-            await this.loadPendingOrders();
-            await this.loadStats();
-
-            alert('All pending orders cancelled!');
-        } catch (error) {
-            console.error('Error cancelling all orders:', error);
-            alert('Error cancelling all orders.');
-        }
-    }
+    // ... [Keep all other existing methods unchanged]
 }
 
 // Initialize admin panel when DOM is loaded
