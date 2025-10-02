@@ -16,9 +16,7 @@ body {
     padding: 0 20px;
 }
 
-
 /* Navigation */
-
 .navbar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 1rem 0;
@@ -57,10 +55,8 @@ body {
     opacity: 0.8;
 }
 
-.login-btn,
-.account-btn,
-.logout-btn {
-    background: rgba(255, 255, 255, 0.2);
+.login-btn, .account-btn, .logout-btn {
+    background: rgba(255,255,255,0.2);
     padding: 0.5rem 1rem;
     border-radius: 5px;
 }
@@ -79,9 +75,7 @@ body {
     transition: 0.3s;
 }
 
-
 /* Hero Section */
-
 .hero {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -113,9 +107,7 @@ body {
     transform: translateY(-2px);
 }
 
-
 /* Features */
-
 .features {
     padding: 80px 0;
     background: #f8f9fa;
@@ -132,7 +124,7 @@ body {
     padding: 2rem;
     border-radius: 10px;
     text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     transition: transform 0.3s;
 }
 
@@ -146,9 +138,7 @@ body {
     margin-bottom: 1rem;
 }
 
-
 /* Products */
-
 .products {
     padding: 80px 0;
 }
@@ -193,7 +183,7 @@ body {
     border-radius: 10px;
     padding: 2rem;
     text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     transition: transform 0.3s;
     border: 2px solid transparent;
 }
@@ -236,9 +226,7 @@ body {
     background: #5a6fd8;
 }
 
-
 /* How to Buy */
-
 .how-to-buy {
     padding: 80px 0;
     background: #f8f9fa;
@@ -269,9 +257,7 @@ body {
     margin: 0 auto 1rem;
 }
 
-
 /* Footer */
-
 .footer {
     background: #333;
     color: white;
@@ -279,9 +265,7 @@ body {
     padding: 2rem 0;
 }
 
-
 /* Modal */
-
 .modal {
     display: none;
     position: fixed;
@@ -290,7 +274,7 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0,0,0,0.5);
 }
 
 .modal-content {
@@ -346,9 +330,7 @@ body {
     background: #5a6fd8;
 }
 
-
 /* Auth Styles */
-
 .auth-container {
     min-height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -362,7 +344,7 @@ body {
     background: white;
     padding: 3rem;
     border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     width: 100%;
     max-width: 400px;
 }
@@ -420,9 +402,7 @@ body {
     text-decoration: none;
 }
 
-
 /* Account Styles */
-
 .account-container {
     display: flex;
     min-height: 100vh;
@@ -481,7 +461,7 @@ body {
     padding: 1.5rem;
     border-radius: 10px;
     margin-bottom: 1rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .order-header {
@@ -508,6 +488,11 @@ body {
     color: #0c5460;
 }
 
+.order-status.cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
 .profile-info {
     background: white;
     padding: 2rem;
@@ -525,30 +510,45 @@ body {
     border-bottom: none;
 }
 
-
 /* Responsive Design */
-
 @media (max-width: 768px) {
     .nav-menu {
         display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: #667eea;
+        flex-direction: column;
+        padding: 1rem 0;
     }
+
+    .nav-menu.active {
+        display: flex;
+    }
+
     .hamburger {
         display: flex;
     }
+
     .hero-content h1 {
         font-size: 2rem;
     }
+
     .account-container {
         flex-direction: column;
     }
+
     .account-sidebar {
         width: 100%;
     }
+
     .feature-grid,
     .products-grid,
     .steps {
         grid-template-columns: 1fr;
     }
+
     .modal-content {
         margin: 10% auto;
         width: 95%;
