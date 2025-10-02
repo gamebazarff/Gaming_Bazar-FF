@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +7,6 @@
     <link rel="stylesheet" href="styles/admin.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-
 <body>
     <div class="admin-container">
         <div class="admin-sidebar">
@@ -17,19 +15,24 @@
             </div>
             <nav class="admin-nav">
                 <a href="#dashboard" class="nav-item active">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
                 </a>
                 <a href="#categories" class="nav-item">
-                    <i class="fas fa-list"></i> Categories
+                    <i class="fas fa-list"></i>
+                    Categories
                 </a>
                 <a href="#products" class="nav-item">
-                    <i class="fas fa-gem"></i> Products
+                    <i class="fas fa-gem"></i>
+                    Products
                 </a>
                 <a href="#orders" class="nav-item">
-                    <i class="fas fa-shopping-cart"></i> Orders
+                    <i class="fas fa-shopping-cart"></i>
+                    Orders
                 </a>
                 <a href="#" class="nav-item" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
                 </a>
             </nav>
         </div>
@@ -66,7 +69,7 @@
                 <div id="categories" class="tab-content">
                     <div class="section-header">
                         <h2>Categories</h2>
-                        <button class="btn-primary" onclick="openCategoryModal()">
+                        <button class="btn-primary" onclick="adminPanel.openCategoryModal()">
                             <i class="fas fa-plus"></i> Add Category
                         </button>
                     </div>
@@ -91,7 +94,7 @@
                 <div id="products" class="tab-content">
                     <div class="section-header">
                         <h2>Products</h2>
-                        <button class="btn-primary" onclick="openProductModal()">
+                        <button class="btn-primary" onclick="adminPanel.openProductModal()">
                             <i class="fas fa-plus"></i> Add Product
                         </button>
                     </div>
@@ -146,7 +149,7 @@
     <!-- Category Modal -->
     <div id="categoryModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeCategoryModal()">&times;</span>
+            <span class="close" onclick="adminPanel.closeCategoryModal()">&times;</span>
             <h2 id="categoryModalTitle">Add Category</h2>
             <form id="categoryForm">
                 <input type="hidden" id="categoryId">
@@ -173,7 +176,7 @@
     <!-- Product Modal -->
     <div id="productModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeProductModal()">&times;</span>
+            <span class="close" onclick="adminPanel.closeProductModal()">&times;</span>
             <h2 id="productModalTitle">Add Product</h2>
             <form id="productForm">
                 <input type="hidden" id="productId">
@@ -213,7 +216,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/debug.js"></script>
 </body>
-
 </html>
