@@ -7,43 +7,66 @@ class MainPage {
     }
 
     async init() {
+        await this.waitForSupabase();
         await this.loadCategories();
         await this.loadProducts();
         this.setupEventListeners();
         this.setupModal();
     }
 
+    async waitForSupabase() {
+        return new Promise((resolve) => {
+            const checkSupabase = () => {
+                if (typeof window.supabase !== 'undefined') {
+                    console.log('Supabase ready for main page');
+                    resolve();
+                } else {
+                    setTimeout(checkSupabase, 100);
+                }
+            };
+            checkSupabase();
+        });
+    }
+
     async loadCategories() {
-        const { data, error } = await supabase
-            .from('categories')
-            .select('*')
-            .eq('is_active', true);
+        try {
+            const { data, error } = await window.supabase
+                .from('categories')
+                .select('*')
+                .eq('is_active', true);
 
-        if (error) {
-            console.error('Error loading categories:', error);
-            return;
+            if (error) {
+                console.error('Error loading categories:', error);
+                return;
+            }
+
+            this.categories = data || [];
+            this.renderCategories();
+        } catch (error) {
+            console.error('Error in loadCategories:', error);
         }
-
-        this.categories = data;
-        this.renderCategories();
     }
 
     async loadProducts() {
-        const { data, error } = await supabase
-            .from('products')
-            .select(`
-                *,
-                categories (name)
-            `)
-            .eq('is_active', true);
+        try {
+            const { data, error } = await window.supabase
+                .from('products')
+                .select(`
+                    *,
+                    categories (name)
+                `)
+                .eq('is_active', true);
 
-        if (error) {
-            console.error('Error loading products:', error);
-            return;
+            if (error) {
+                console.error('Error loading products:', error);
+                return;
+            }
+
+            this.products = data || [];
+            this.renderProducts();
+        } catch (error) {
+            console.error('Error in loadProducts:', error);
         }
-
-        this.products = data;
-        this.renderProducts();
     }
 
     renderCategories() {
@@ -53,14 +76,14 @@ class MainPage {
         // Clear existing buttons (except "All")
         const allBtn = filterContainer.querySelector('[data-category="all"]');
         filterContainer.innerHTML = '';
-        filterContainer.appendChild(allBtn);
+        if (allBtn) filterContainer.appendChild(allBtn);
 
         this.categories.forEach(category => {
             const button = document.createElement('button');
             button.className = 'filter-btn';
             button.textContent = category.name;
             button.setAttribute('data-category', category.id);
-            button.addEventListener('click', () => this.filterProducts(category.id));
+            button.addEventListener('click', (e) => this.filterProducts(category.id, e));
             filterContainer.appendChild(button);
         });
     }
@@ -69,9 +92,14 @@ class MainPage {
         const productsGrid = document.getElementById('productsGrid');
         if (!productsGrid) return;
 
-        const filteredProducts = categoryId === 'all' ?
-            this.products :
-            this.products.filter(product => product.category_id === categoryId);
+        const filteredProducts = categoryId === 'all' 
+            ? this.products 
+            : this.products.filter(product => product.category_id === categoryId);
+
+        if (filteredProducts.length === 0) {
+            productsGrid.innerHTML = '<p class="no-products">No products found in this category.</p>';
+            return;
+        }
 
         productsGrid.innerHTML = filteredProducts.map(product => `
             <div class="product-card" data-product-id="${product.id}">
@@ -79,14 +107,14 @@ class MainPage {
                 <p class="diamonds">${product.diamonds_count} Diamonds</p>
                 <p class="price">৳${product.price}</p>
                 <p class="description">${product.description || ''}</p>
-                <button class="buy-btn" onclick="mainPage.openProductModal('${product.id}')">
+                <button class="buy-btn" onclick="window.mainPage.openProductModal('${product.id}')">
                     Buy Now
                 </button>
             </div>
         `).join('');
     }
 
-    filterProducts(categoryId) {
+    filterProducts(categoryId, event) {
         // Update active filter button
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -129,7 +157,7 @@ class MainPage {
 
     async submitOrder(e) {
         e.preventDefault();
-
+        
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (!currentUser) {
             alert('Please login to place an order');
@@ -148,7 +176,7 @@ class MainPage {
         };
 
         try {
-            const { data, error } = await supabase
+            const { data, error } = await window.supabase
                 .from('orders')
                 .insert([orderData])
                 .select()
@@ -158,7 +186,7 @@ class MainPage {
 
             alert('Order placed successfully! We will process it shortly.');
             this.closeModal();
-
+            
             // Redirect to account page to see the order
             window.location.href = 'account.html';
         } catch (error) {
@@ -171,7 +199,7 @@ class MainPage {
         // Mobile menu toggle
         const hamburger = document.querySelector('.hamburger');
         const navMenu = document.querySelector('.nav-menu');
-
+        
         if (hamburger && navMenu) {
             hamburger.addEventListener('click', () => {
                 navMenu.style.display = navMenu.style.display === 'flex' ? 'none' : 'flex';
@@ -180,7 +208,7 @@ class MainPage {
 
         // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
+            anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
@@ -194,5 +222,7 @@ class MainPage {
     }
 }
 
-// Initialize main page
-const mainPage = new MainPage();
+// Initialize main page when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    window.mainPage = new MainPage();
+});
