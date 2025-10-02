@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire Diamond Topup</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2>Fire Diamond</h2>
+            </div>
+            <div class="nav-menu">
+                <a href="#" class="nav-link active">Home</a>
+                <a href="#products" class="nav-link">Products</a>
+                <a href="#how-to-buy" class="nav-link">How to Buy</a>
+                <a href="login.html" class="nav-link login-btn" id="loginBtn">Login</a>
+                <a href="account.html" class="nav-link account-btn" id="accountBtn" style="display:none;">My Account</a>
+                <a href="#" class="nav-link logout-btn" id="logoutBtn" style="display:none;">Logout</a>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Fire Diamond Topup</h1>
+            <p>Get your diamonds instantly with secure payment methods</p>
+            <a href="#products" class="cta-button">Buy Now</a>
+        </div>
+    </header>
+
+    <section class="features">
+        <div class="container">
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fas fa-bolt"></i>
+                    <h3>Instant Delivery</h3>
+                    <p>Get your diamonds within minutes after payment</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Secure Payment</h3>
+                    <p>100% secure payment with Bkash & Nagad</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-headset"></i>
+                    <h3>24/7 Support</h3>
+                    <p>Round the clock customer support</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="products" class="products">
+        <div class="container">
+            <h2 class="section-title">Available Diamond Packages</h2>
+            <div class="category-filter">
+                <button class="filter-btn active" data-category="all">All</button>
+                <!-- Categories will be loaded here -->
+            </div>
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <section id="how-to-buy" class="how-to-buy">
+        <div class="container">
+            <h2 class="section-title">How to Buy</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Select Package</h3>
+                    <p>Choose your desired diamond package</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Make Payment</h3>
+                    <p>Pay via Bkash or Nagad</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Submit Details</h3>
+                    <p>Provide payment information</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Receive Diamonds</h3>
+                    <p>Get diamonds instantly in your account</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Fire Diamond Topup. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalProductName"></h2>
+            <p id="modalProductDesc"></p>
+            <div class="price-section">
+                <h3>Price: ৳<span id="modalProductPrice"></span></h3>
+                <p>Diamonds: <span id="modalProductDiamonds"></span></p>
+            </div>
+            <form id="paymentForm">
+                <input type="hidden" id="selectedProductId">
+                <div class="form-group">
+                    <label>Payment Method:</label>
+                    <select id="paymentMethod" required>
+                        <option value="">Select Method</option>
+                        <option value="bkash">Bkash</option>
+                        <option value="nagad">Nagad</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Your Bkash/Nagad Number:</label>
+                    <input type="text" id="paymentNumber" required placeholder="01XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Transaction ID:</label>
+                    <input type="text" id="transactionId" required placeholder="Enter transaction ID">
+                </div>
+                <div class="form-group">
+                    <label>Your Game ID:</label>
+                    <input type="text" id="gameId" required placeholder="Enter your game ID">
+                </div>
+                <button type="submit" class="submit-btn">Submit Order</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>

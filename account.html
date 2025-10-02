@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account - Fire Diamond Topup</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2><a href="index.html" style="color: white; text-decoration: none;">Fire Diamond</a></h2>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="#" class="nav-link logout-btn" id="logoutBtn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="account-container">
+        <div class="account-sidebar">
+            <div class="user-info">
+                <h3 id="userName">User Name</h3>
+                <p id="userEmail">user@email.com</p>
+            </div>
+            <nav class="account-nav">
+                <a href="#orders" class="nav-item active">My Orders</a>
+                <a href="#profile" class="nav-item">Profile</a>
+            </nav>
+        </div>
+
+        <div class="account-content">
+            <div id="orders" class="tab-content active">
+                <h2>My Orders</h2>
+                <div class="orders-list" id="ordersList">
+                    <!-- Orders will be loaded here -->
+                </div>
+            </div>
+
+            <div id="profile" class="tab-content">
+                <h2>Profile Information</h2>
+                <div class="profile-info">
+                    <div class="info-item">
+                        <label>Full Name:</label>
+                        <span id="profileName"></span>
+                    </div>
+                    <div class="info-item">
+                        <label>Email:</label>
+                        <span id="profileEmail"></span>
+                    </div>
+                    <div class="info-item">
+                        <label>Mobile Number:</label>
+                        <span id="profileMobile"></span>
+                    </div>
+                    <div class="info-item">
+                        <label>Member Since:</label>
+                        <span id="profileSince"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Account page specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab navigation
+            const navItems = document.querySelectorAll('.nav-item');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = this.getAttribute('href').substring(1);
+
+                    // Update active nav item
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // Show target tab
+                    tabContents.forEach(tab => tab.classList.remove('active'));
+                    document.getElementById(target).classList.add('active');
+                });
+            });
+
+            // Load user orders
+            loadUserOrders();
+        });
+
+        async function loadUserOrders() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const {
+                data: orders,
+                error
+            } = await supabase
+                .from('orders')
+                .select(`
+                    *,
+                    products (name, diamonds_count, price)
+                `)
+                .eq('user_id', currentUser.id)
+                .order('created_at', {
+                    ascending: false
+                });
+
+            if (error) {
+                console.error('Error loading orders:', error);
+                return;
+            }
+
+            const ordersList = document.getElementById('ordersList');
+            if (orders.length === 0) {
+                ordersList.innerHTML = '<p>No orders found.</p>';
+                return;
+            }
+
+            ordersList.innerHTML = orders.map(order => `
+                <div class="order-card">
+                    <div class="order-header">
+                        <h3>${order.products.name}</h3>
+                        <span class="order-status ${order.status}">${order.status}</span>
+                    </div>
+                    <div class="order-details">
+                        <p><strong>Diamonds:</strong> ${order.products.diamonds_count}</p>
+                        <p><strong>Price:</strong> ৳${order.products.price}</p>
+                        <p><strong>Payment Method:</strong> ${order.payment_method}</p>
+                        <p><strong>Transaction ID:</strong> ${order.transaction_id}</p>
+                        <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+
+</html>
