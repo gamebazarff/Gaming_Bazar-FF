@@ -4,6 +4,8 @@ class AdminPanel {
         this.categories = [];
         this.products = [];
         this.orders = [];
+        this.pendingOrders = [];
+        this.orderToDelete = null;
         this.init();
     }
 
@@ -13,6 +15,7 @@ class AdminPanel {
         await this.loadCategories();
         await this.loadProducts();
         await this.loadOrders();
+        await this.loadPendingOrders();
         this.setupEventListeners();
         this.setupModals();
     }
@@ -44,6 +47,12 @@ class AdminPanel {
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'pending');
 
+            // Completed orders
+            const { count: completedOrders } = await window.supabase
+                .from('orders')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'completed');
+
             // Total products
             const { count: totalProducts } = await window.supabase
                 .from('products')
@@ -55,10 +64,28 @@ class AdminPanel {
                 .from('users')
                 .select('*', { count: 'exact', head: true });
 
+            // Total revenue (sum of completed orders)
+            const { data: revenueData, error: revenueError } = await window.supabase
+                .from('orders')
+                .select(`
+                    products (price)
+                `)
+                .eq('status', 'completed');
+
+            let totalRevenue = 0;
+            if (revenueData && !revenueError) {
+                totalRevenue = revenueData.reduce((sum, order) => {
+                    return sum + (parseFloat(order.products?.price) || 0);
+                }, 0);
+            }
+
             document.getElementById('totalOrders').textContent = totalOrders || 0;
             document.getElementById('pendingOrders').textContent = pendingOrders || 0;
+            document.getElementById('completedOrders').textContent = completedOrders || 0;
             document.getElementById('totalProducts').textContent = totalProducts || 0;
             document.getElementById('totalUsers').textContent = totalUsers || 0;
+            document.getElementById('totalRevenue').textContent = `৳${totalRevenue.toFixed(2)}`;
+
         } catch (error) {
             console.error('Error loading stats:', error);
         }
@@ -129,6 +156,30 @@ class AdminPanel {
         }
     }
 
+    async loadPendingOrders() {
+        try {
+            const { data, error } = await window.supabase
+                .from('orders')
+                .select(`
+                    *,
+                    products (name, price),
+                    users (email, full_name)
+                `)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error loading pending orders:', error);
+                return;
+            }
+
+            this.pendingOrders = data || [];
+            this.renderPendingOrders();
+        } catch (error) {
+            console.error('Error in loadPendingOrders:', error);
+        }
+    }
+
     renderCategories() {
         const tbody = document.querySelector('#categoriesTable tbody');
         if (!tbody) return;
@@ -143,11 +194,11 @@ class AdminPanel {
                     </span>
                 </td>
                 <td class="action-buttons">
-                    <button class="btn-primary" onclick="window.adminPanel.editCategory('${category.id}')">
-                        Edit
+                    <button class="btn-primary btn-sm" onclick="window.adminPanel.editCategory('${category.id}')">
+                        <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button class="btn-danger" onclick="window.adminPanel.toggleCategoryStatus('${category.id}', ${!category.is_active})">
-                        ${category.is_active ? 'Deactivate' : 'Activate'}
+                    <button class="btn-danger btn-sm" onclick="window.adminPanel.toggleCategoryStatus('${category.id}', ${!category.is_active})">
+                        ${category.is_active ? '<i class="fas fa-eye-slash"></i> Deactivate' : '<i class="fas fa-eye"></i> Activate'}
                     </button>
                 </td>
             </tr>
@@ -170,11 +221,11 @@ class AdminPanel {
                     </span>
                 </td>
                 <td class="action-buttons">
-                    <button class="btn-primary" onclick="window.adminPanel.editProduct('${product.id}')">
-                        Edit
+                    <button class="btn-primary btn-sm" onclick="window.adminPanel.editProduct('${product.id}')">
+                        <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button class="btn-danger" onclick="window.adminPanel.toggleProductStatus('${product.id}', ${!product.is_active})">
-                        ${product.is_active ? 'Deactivate' : 'Activate'}
+                    <button class="btn-danger btn-sm" onclick="window.adminPanel.toggleProductStatus('${product.id}', ${!product.is_active})">
+                        ${product.is_active ? '<i class="fas fa-eye-slash"></i> Deactivate' : '<i class="fas fa-eye"></i> Activate'}
                     </button>
                 </td>
             </tr>
@@ -185,13 +236,29 @@ class AdminPanel {
         const tbody = document.querySelector('#ordersTable tbody');
         if (!tbody) return;
 
-        tbody.innerHTML = this.orders.map(order => `
+        const statusFilter = document.getElementById('orderStatusFilter')?.value || 'all';
+        let filteredOrders = this.orders;
+
+        if (statusFilter !== 'all') {
+            filteredOrders = this.orders.filter(order => order.status === statusFilter);
+        }
+
+        if (filteredOrders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 2rem;">No orders found</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filteredOrders.map(order => `
             <tr>
-                <td>${order.id.substring(0, 8)}...</td>
+                <td><span class="id-cell">${order.id.substring(0, 8)}...</span></td>
+                <td><span class="id-cell">${order.user_id?.substring(0, 8)}...</span></td>
                 <td>${order.products?.name || '-'}</td>
                 <td>${order.users?.email || '-'}</td>
                 <td>৳${order.products?.price || '0'}</td>
                 <td>${order.payment_method}</td>
+                <td>${order.payment_number || '-'}</td>
+                <td><span class="id-cell">${order.transaction_id || '-'}</span></td>
+                <td>${order.game_id || '-'}</td>
                 <td>
                     <span class="status-badge status-${order.status}">
                         ${order.status}
@@ -199,11 +266,54 @@ class AdminPanel {
                 </td>
                 <td>${new Date(order.created_at).toLocaleDateString()}</td>
                 <td class="action-buttons">
-                    <button class="btn-success" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'completed')">
-                        Complete
+                    ${order.status === 'pending' ? `
+                        <button class="btn-success btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'completed')" title="Complete Order">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    ` : ''}
+                    <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteOrder('${order.id}')" title="Delete Order">
+                        <i class="fas fa-trash"></i>
                     </button>
-                    <button class="btn-danger" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'cancelled')">
-                        Cancel
+                    ${order.status === 'pending' ? `
+                        <button class="btn-danger btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'cancelled')" title="Cancel Order">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    renderPendingOrders() {
+        const tbody = document.querySelector('#pendingOrdersTable tbody');
+        if (!tbody) return;
+
+        if (this.pendingOrders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 2rem;">No pending orders</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = this.pendingOrders.map(order => `
+            <tr>
+                <td><span class="id-cell">${order.id.substring(0, 8)}...</span></td>
+                <td><span class="id-cell">${order.user_id?.substring(0, 8)}...</span></td>
+                <td>${order.products?.name || '-'}</td>
+                <td>${order.users?.email || '-'}</td>
+                <td>৳${order.products?.price || '0'}</td>
+                <td>${order.payment_method}</td>
+                <td>${order.payment_number || '-'}</td>
+                <td><span class="id-cell">${order.transaction_id || '-'}</span></td>
+                <td>${order.game_id || '-'}</td>
+                <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                <td class="action-buttons">
+                    <button class="btn-success btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'completed')" title="Complete Order">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn-danger btn-sm" onclick="window.adminPanel.confirmDeleteOrder('${order.id}')" title="Delete Order">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn-danger btn-sm" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'cancelled')" title="Cancel Order">
+                        <i class="fas fa-times"></i>
                     </button>
                 </td>
             </tr>
@@ -238,11 +348,20 @@ class AdminPanel {
                     
                     // Update page title
                     document.getElementById('pageTitle').textContent = 
-                        target.charAt(0).toUpperCase() + target.slice(1);
+                        target.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
                     
                     // Show target tab
                     tabContents.forEach(tab => tab.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
+
+                    // Refresh data for specific tabs
+                    if (target === 'pending-orders') {
+                        this.loadPendingOrders();
+                    } else if (target === 'orders') {
+                        this.loadOrders();
+                    } else if (target === 'dashboard') {
+                        this.loadStats();
+                    }
                 });
             }
         });
@@ -265,14 +384,21 @@ class AdminPanel {
         // Category modal
         this.categoryModal = document.getElementById('categoryModal');
         this.categoryForm = document.getElementById('categoryForm');
-
         this.categoryForm.addEventListener('submit', (e) => this.saveCategory(e));
 
         // Product modal
         this.productModal = document.getElementById('productModal');
         this.productForm = document.getElementById('productForm');
-
         this.productForm.addEventListener('submit', (e) => this.saveProduct(e));
+
+        // Delete modal
+        this.deleteModal = document.getElementById('deleteModal');
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => this.deleteOrder());
+    }
+
+    // Filter orders by status
+    filterOrders() {
+        this.renderOrders();
     }
 
     // Category methods
@@ -463,11 +589,141 @@ class AdminPanel {
 
             if (error) throw error;
 
+            // Reload all order-related data
             await this.loadOrders();
+            await this.loadPendingOrders();
             await this.loadStats();
+
+            alert(`Order ${newStatus} successfully!`);
         } catch (error) {
             console.error('Error updating order status:', error);
             alert('Error updating order status.');
+        }
+    }
+
+    // Delete order methods
+    confirmDeleteOrder(orderId) {
+        this.orderToDelete = orderId;
+        const order = this.orders.find(o => o.id === orderId) || this.pendingOrders.find(o => o.id === orderId);
+        
+        const deleteMessage = document.getElementById('deleteMessage');
+        if (order) {
+            deleteMessage.innerHTML = `
+                Are you sure you want to delete this order?<br><br>
+                <strong>Order Details:</strong><br>
+                - Product: ${order.products?.name || 'N/A'}<br>
+                - User: ${order.users?.email || 'N/A'}<br>
+                - Amount: ৳${order.products?.price || '0'}<br>
+                - Status: ${order.status}<br><br>
+                This action cannot be undone.
+            `;
+        } else {
+            deleteMessage.textContent = 'Are you sure you want to delete this order? This action cannot be undone.';
+        }
+        
+        this.deleteModal.style.display = 'block';
+    }
+
+    closeDeleteModal() {
+        this.deleteModal.style.display = 'none';
+        this.orderToDelete = null;
+    }
+
+    async deleteOrder() {
+        if (!this.orderToDelete) return;
+
+        try {
+            const { error } = await window.supabase
+                .from('orders')
+                .delete()
+                .eq('id', this.orderToDelete);
+
+            if (error) throw error;
+
+            this.closeDeleteModal();
+            
+            // Reload all order-related data
+            await this.loadOrders();
+            await this.loadPendingOrders();
+            await this.loadStats();
+
+            alert('Order deleted successfully!');
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            alert('Error deleting order.');
+        }
+    }
+
+    // Bulk operations
+    async completeAllPending() {
+        if (!confirm('Are you sure you want to mark ALL pending orders as completed?')) {
+            return;
+        }
+
+        try {
+            const { error } = await window.supabase
+                .from('orders')
+                .update({ status: 'completed' })
+                .eq('status', 'pending');
+
+            if (error) throw error;
+
+            await this.loadOrders();
+            await this.loadPendingOrders();
+            await this.loadStats();
+
+            alert('All pending orders marked as completed!');
+        } catch (error) {
+            console.error('Error completing all orders:', error);
+            alert('Error completing all orders.');
+        }
+    }
+
+    async cancelAllPending() {
+        if (!confirm('Are you sure you want to cancel ALL pending orders?')) {
+            return;
+        }
+
+        try {
+            const { error } = await window.supabase
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('status', 'pending');
+
+            if (error) throw error;
+
+            await this.loadOrders();
+            await this.loadPendingOrders();
+            await this.loadStats();
+
+            alert('All pending orders cancelled!');
+        } catch (error) {
+            console.error('Error cancelling all orders:', error);
+            alert('Error cancelling all orders.');
+        }
+    }
+
+    async deleteCompletedOrders() {
+        if (!confirm('Are you sure you want to delete ALL completed orders? This will free up storage space but cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const { error } = await window.supabase
+                .from('orders')
+                .delete()
+                .eq('status', 'completed');
+
+            if (error) throw error;
+
+            await this.loadOrders();
+            await this.loadPendingOrders();
+            await this.loadStats();
+
+            alert('All completed orders deleted successfully! Storage space freed.');
+        } catch (error) {
+            console.error('Error deleting completed orders:', error);
+            alert('Error deleting completed orders.');
         }
     }
 }
