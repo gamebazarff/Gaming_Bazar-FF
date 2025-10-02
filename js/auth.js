@@ -2,13 +2,36 @@
 class Auth {
     constructor() {
         this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        this.init();
+    }
+
+    async init() {
+        await this.waitForSupabase();
         this.updateUI();
+    }
+
+    async waitForSupabase() {
+        return new Promise((resolve) => {
+            const checkSupabase = () => {
+                if (typeof window.supabase !== 'undefined') {
+                    console.log('Supabase is ready');
+                    resolve();
+                } else {
+                    console.log('Waiting for Supabase...');
+                    setTimeout(checkSupabase, 100);
+                }
+            };
+            checkSupabase();
+        });
     }
 
     async login(email, password) {
         try {
-            // Since we're not using Supabase auth, we'll check against our users table
-            const { data: users, error } = await supabase
+            if (typeof window.supabase === 'undefined') {
+                throw new Error('Database connection not available. Please refresh the page.');
+            }
+
+            const { data: users, error } = await window.supabase
                 .from('users')
                 .select('*')
                 .eq('email', email)
@@ -22,14 +45,14 @@ class Auth {
             this.currentUser = users;
             localStorage.setItem('currentUser', JSON.stringify(users));
             this.updateUI();
-
+            
             // Redirect based on user
             if (email === 'admin123@gmail.com') {
                 window.location.href = 'admin.html';
             } else {
                 window.location.href = 'account.html';
             }
-
+            
             return true;
         } catch (error) {
             alert(error.message);
@@ -39,8 +62,12 @@ class Auth {
 
     async register(userData) {
         try {
+            if (typeof window.supabase === 'undefined') {
+                throw new Error('Database connection not available. Please refresh the page.');
+            }
+
             // Check if user already exists
-            const { data: existingUser } = await supabase
+            const { data: existingUser } = await window.supabase
                 .from('users')
                 .select('email')
                 .eq('email', userData.email)
@@ -51,7 +78,7 @@ class Auth {
             }
 
             // Insert new user
-            const { data, error } = await supabase
+            const { data, error } = await window.supabase
                 .from('users')
                 .insert([userData])
                 .select()
@@ -62,7 +89,7 @@ class Auth {
             this.currentUser = data;
             localStorage.setItem('currentUser', JSON.stringify(data));
             this.updateUI();
-
+            
             window.location.href = 'account.html';
             return true;
         } catch (error) {
@@ -82,16 +109,11 @@ class Auth {
         const loginBtn = document.getElementById('loginBtn');
         const accountBtn = document.getElementById('accountBtn');
         const logoutBtn = document.getElementById('logoutBtn');
-        const userName = document.getElementById('userName');
-        const userEmail = document.getElementById('userEmail');
 
         if (this.currentUser) {
             if (loginBtn) loginBtn.style.display = 'none';
             if (accountBtn) accountBtn.style.display = 'block';
             if (logoutBtn) logoutBtn.style.display = 'block';
-
-            if (userName) userName.textContent = this.currentUser.full_name;
-            if (userEmail) userEmail.textContent = this.currentUser.email;
         } else {
             if (loginBtn) loginBtn.style.display = 'block';
             if (accountBtn) accountBtn.style.display = 'none';
@@ -108,11 +130,10 @@ class Auth {
     }
 }
 
-// Initialize auth
-const auth = new Auth();
-
-// Event listeners for auth pages
+// Initialize auth when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    window.auth = new Auth();
+
     // Login form
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
@@ -120,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            await auth.login(email, password);
+            await window.auth.login(email, password);
         });
     }
 
@@ -135,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 mobile_number: document.getElementById('registerMobile').value,
                 password: document.getElementById('registerPassword').value
             };
-            await auth.register(userData);
+            await window.auth.register(userData);
         });
     }
 
@@ -144,20 +165,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            auth.logout();
+            window.auth.logout();
         });
     }
 
     // Protect admin page
     if (window.location.pathname.includes('admin.html')) {
-        if (!auth.isAuthenticated() || !auth.isAdmin()) {
+        if (!window.auth.isAuthenticated() || !window.auth.isAdmin()) {
             window.location.href = 'login.html';
         }
     }
 
     // Protect account page
     if (window.location.pathname.includes('account.html')) {
-        if (!auth.isAuthenticated()) {
+        if (!window.auth.isAuthenticated()) {
             window.location.href = 'login.html';
         }
     }
