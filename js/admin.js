@@ -8,6 +8,7 @@ class AdminPanel {
     }
 
     async init() {
+        await this.waitForSupabase();
         await this.loadStats();
         await this.loadCategories();
         await this.loadProducts();
@@ -16,86 +17,116 @@ class AdminPanel {
         this.setupModals();
     }
 
+    async waitForSupabase() {
+        return new Promise((resolve) => {
+            const checkSupabase = () => {
+                if (typeof window.supabase !== 'undefined') {
+                    console.log('Supabase ready for admin panel');
+                    resolve();
+                } else {
+                    setTimeout(checkSupabase, 100);
+                }
+            };
+            checkSupabase();
+        });
+    }
+
     async loadStats() {
-        // Total orders
-        const { count: totalOrders } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true });
+        try {
+            // Total orders
+            const { count: totalOrders } = await window.supabase
+                .from('orders')
+                .select('*', { count: 'exact', head: true });
 
-        // Pending orders
-        const { count: pendingOrders } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending');
+            // Pending orders
+            const { count: pendingOrders } = await window.supabase
+                .from('orders')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
 
-        // Total products
-        const { count: totalProducts } = await supabase
-            .from('products')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_active', true);
+            // Total products
+            const { count: totalProducts } = await window.supabase
+                .from('products')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', true);
 
-        // Total users
-        const { count: totalUsers } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true });
+            // Total users
+            const { count: totalUsers } = await window.supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true });
 
-        document.getElementById('totalOrders').textContent = totalOrders || 0;
-        document.getElementById('pendingOrders').textContent = pendingOrders || 0;
-        document.getElementById('totalProducts').textContent = totalProducts || 0;
-        document.getElementById('totalUsers').textContent = totalUsers || 0;
+            document.getElementById('totalOrders').textContent = totalOrders || 0;
+            document.getElementById('pendingOrders').textContent = pendingOrders || 0;
+            document.getElementById('totalProducts').textContent = totalProducts || 0;
+            document.getElementById('totalUsers').textContent = totalUsers || 0;
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
     }
 
     async loadCategories() {
-        const { data, error } = await supabase
-            .from('categories')
-            .select('*')
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await window.supabase
+                .from('categories')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Error loading categories:', error);
-            return;
+            if (error) {
+                console.error('Error loading categories:', error);
+                return;
+            }
+
+            this.categories = data || [];
+            this.renderCategories();
+        } catch (error) {
+            console.error('Error in loadCategories:', error);
         }
-
-        this.categories = data;
-        this.renderCategories();
     }
 
     async loadProducts() {
-        const { data, error } = await supabase
-            .from('products')
-            .select(`
-                *,
-                categories (name)
-            `)
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await window.supabase
+                .from('products')
+                .select(`
+                    *,
+                    categories (name)
+                `)
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Error loading products:', error);
-            return;
+            if (error) {
+                console.error('Error loading products:', error);
+                return;
+            }
+
+            this.products = data || [];
+            this.renderProducts();
+            this.populateCategorySelect();
+        } catch (error) {
+            console.error('Error in loadProducts:', error);
         }
-
-        this.products = data;
-        this.renderProducts();
-        this.populateCategorySelect();
     }
 
     async loadOrders() {
-        const { data, error } = await supabase
-            .from('orders')
-            .select(`
-                *,
-                products (name, price),
-                users (email, full_name)
-            `)
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await window.supabase
+                .from('orders')
+                .select(`
+                    *,
+                    products (name, price),
+                    users (email, full_name)
+                `)
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Error loading orders:', error);
-            return;
+            if (error) {
+                console.error('Error loading orders:', error);
+                return;
+            }
+
+            this.orders = data || [];
+            this.renderOrders();
+        } catch (error) {
+            console.error('Error in loadOrders:', error);
         }
-
-        this.orders = data;
-        this.renderOrders();
     }
 
     renderCategories() {
@@ -112,10 +143,10 @@ class AdminPanel {
                     </span>
                 </td>
                 <td class="action-buttons">
-                    <button class="btn-primary" onclick="adminPanel.editCategory('${category.id}')">
+                    <button class="btn-primary" onclick="window.adminPanel.editCategory('${category.id}')">
                         Edit
                     </button>
-                    <button class="btn-danger" onclick="adminPanel.toggleCategoryStatus('${category.id}', ${!category.is_active})">
+                    <button class="btn-danger" onclick="window.adminPanel.toggleCategoryStatus('${category.id}', ${!category.is_active})">
                         ${category.is_active ? 'Deactivate' : 'Activate'}
                     </button>
                 </td>
@@ -139,10 +170,10 @@ class AdminPanel {
                     </span>
                 </td>
                 <td class="action-buttons">
-                    <button class="btn-primary" onclick="adminPanel.editProduct('${product.id}')">
+                    <button class="btn-primary" onclick="window.adminPanel.editProduct('${product.id}')">
                         Edit
                     </button>
-                    <button class="btn-danger" onclick="adminPanel.toggleProductStatus('${product.id}', ${!product.is_active})">
+                    <button class="btn-danger" onclick="window.adminPanel.toggleProductStatus('${product.id}', ${!product.is_active})">
                         ${product.is_active ? 'Deactivate' : 'Activate'}
                     </button>
                 </td>
@@ -168,10 +199,10 @@ class AdminPanel {
                 </td>
                 <td>${new Date(order.created_at).toLocaleDateString()}</td>
                 <td class="action-buttons">
-                    <button class="btn-success" onclick="adminPanel.updateOrderStatus('${order.id}', 'completed')">
+                    <button class="btn-success" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'completed')">
                         Complete
                     </button>
-                    <button class="btn-danger" onclick="adminPanel.updateOrderStatus('${order.id}', 'cancelled')">
+                    <button class="btn-danger" onclick="window.adminPanel.updateOrderStatus('${order.id}', 'cancelled')">
                         Cancel
                     </button>
                 </td>
@@ -185,9 +216,9 @@ class AdminPanel {
 
         select.innerHTML = '<option value="">Select Category</option>' +
             this.categories
-            .filter(cat => cat.is_active)
-            .map(cat => `<option value="${cat.id}">${cat.name}</option>`)
-            .join('');
+                .filter(cat => cat.is_active)
+                .map(cat => `<option value="${cat.id}">${cat.name}</option>`)
+                .join('');
     }
 
     setupEventListeners() {
@@ -200,15 +231,15 @@ class AdminPanel {
                 item.addEventListener('click', (e) => {
                     e.preventDefault();
                     const target = item.getAttribute('href').substring(1);
-
+                    
                     // Update active nav item
                     navItems.forEach(nav => nav.classList.remove('active'));
                     item.classList.add('active');
-
+                    
                     // Update page title
-                    document.getElementById('pageTitle').textContent =
+                    document.getElementById('pageTitle').textContent = 
                         target.charAt(0).toUpperCase() + target.slice(1);
-
+                    
                     // Show target tab
                     tabContents.forEach(tab => tab.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
@@ -221,7 +252,11 @@ class AdminPanel {
         if (logoutBtn) {
             logoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                auth.logout();
+                if (window.auth) {
+                    window.auth.logout();
+                } else {
+                    window.location.href = 'login.html';
+                }
             });
         }
     }
@@ -244,7 +279,7 @@ class AdminPanel {
     openCategoryModal(categoryId = null) {
         const title = document.getElementById('categoryModalTitle');
         const form = document.getElementById('categoryForm');
-
+        
         if (categoryId) {
             title.textContent = 'Edit Category';
             const category = this.categories.find(c => c.id === categoryId);
@@ -259,7 +294,7 @@ class AdminPanel {
             form.reset();
             document.getElementById('categoryId').value = '';
         }
-
+        
         this.categoryModal.style.display = 'block';
     }
 
@@ -269,7 +304,7 @@ class AdminPanel {
 
     async saveCategory(e) {
         e.preventDefault();
-
+        
         const categoryData = {
             name: document.getElementById('categoryName').value,
             description: document.getElementById('categoryDescription').value,
@@ -281,18 +316,18 @@ class AdminPanel {
         try {
             if (categoryId) {
                 // Update existing category
-                const { error } = await supabase
+                const { error } = await window.supabase
                     .from('categories')
                     .update(categoryData)
                     .eq('id', categoryId);
-
+                
                 if (error) throw error;
             } else {
                 // Insert new category
-                const { error } = await supabase
+                const { error } = await window.supabase
                     .from('categories')
                     .insert([categoryData]);
-
+                
                 if (error) throw error;
             }
 
@@ -307,7 +342,7 @@ class AdminPanel {
 
     async toggleCategoryStatus(categoryId, newStatus) {
         try {
-            const { error } = await supabase
+            const { error } = await window.supabase
                 .from('categories')
                 .update({ is_active: newStatus })
                 .eq('id', categoryId);
@@ -322,11 +357,15 @@ class AdminPanel {
         }
     }
 
+    editCategory(categoryId) {
+        this.openCategoryModal(categoryId);
+    }
+
     // Product methods
     openProductModal(productId = null) {
         const title = document.getElementById('productModalTitle');
         const form = document.getElementById('productForm');
-
+        
         if (productId) {
             title.textContent = 'Edit Product';
             const product = this.products.find(p => p.id === productId);
@@ -344,7 +383,7 @@ class AdminPanel {
             form.reset();
             document.getElementById('productId').value = '';
         }
-
+        
         this.productModal.style.display = 'block';
     }
 
@@ -354,7 +393,7 @@ class AdminPanel {
 
     async saveProduct(e) {
         e.preventDefault();
-
+        
         const productData = {
             name: document.getElementById('productName').value,
             category_id: document.getElementById('productCategory').value,
@@ -369,18 +408,18 @@ class AdminPanel {
         try {
             if (productId) {
                 // Update existing product
-                const { error } = await supabase
+                const { error } = await window.supabase
                     .from('products')
                     .update(productData)
                     .eq('id', productId);
-
+                
                 if (error) throw error;
             } else {
                 // Insert new product
-                const { error } = await supabase
+                const { error } = await window.supabase
                     .from('products')
                     .insert([productData]);
-
+                
                 if (error) throw error;
             }
 
@@ -395,7 +434,7 @@ class AdminPanel {
 
     async toggleProductStatus(productId, newStatus) {
         try {
-            const { error } = await supabase
+            const { error } = await window.supabase
                 .from('products')
                 .update({ is_active: newStatus })
                 .eq('id', productId);
@@ -410,10 +449,14 @@ class AdminPanel {
         }
     }
 
+    editProduct(productId) {
+        this.openProductModal(productId);
+    }
+
     // Order methods
     async updateOrderStatus(orderId, newStatus) {
         try {
-            const { error } = await supabase
+            const { error } = await window.supabase
                 .from('orders')
                 .update({ status: newStatus })
                 .eq('id', orderId);
@@ -429,5 +472,7 @@ class AdminPanel {
     }
 }
 
-// Initialize admin panel
-const adminPanel = new AdminPanel();
+// Initialize admin panel when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    window.adminPanel = new AdminPanel();
+});
