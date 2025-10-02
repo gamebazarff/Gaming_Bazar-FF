@@ -1,13 +1,108 @@
-/* Add to your existing admin.css */
+/* User Management Styles */
+.user-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
 
-.category-actions,
-.product-actions {
+.user-actions .filter-controls {
     display: flex;
     gap: 1rem;
     align-items: center;
 }
 
-/* Action buttons improvements */
+#userSearch {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-width: 200px;
+}
+
+.banned-user {
+    background: #fde8e8 !important;
+    opacity: 0.7;
+}
+
+.banned-user:hover {
+    background: #fbd5d5 !important;
+}
+
+.status-banned {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.admin-badge {
+    background: #3498db;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.btn-warning {
+    background: #f39c12;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s;
+    font-size: 0.8rem;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(243, 156, 18, 0.3);
+}
+
+/* Checkbox styles */
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.user-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive user actions */
+@media (max-width: 768px) {
+    .user-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .user-actions .filter-controls {
+        flex-direction: column;
+    }
+    
+    #userSearch {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .user-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Password generator button */
+#generatePassword {
+    margin-top: 0.5rem;
+}
+
+/* Enhanced action buttons for users */
 .action-buttons {
     display: flex;
     gap: 0.25rem;
@@ -15,48 +110,10 @@
 }
 
 .action-buttons button {
-    min-width: 40px;
+    min-width: 36px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-
-/* Warning styles for delete modals */
-.warning-text {
-    color: #e74c3c;
-    font-weight: bold;
-    background: #fde8e8;
-    padding: 0.5rem;
-    border-radius: 5px;
-    border-left: 4px solid #e74c3c;
-}
-
-/* Responsive improvements for action buttons */
-@media (max-width: 768px) {
-    .category-actions,
-    .product-actions {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .category-actions button,
-    .product-actions button {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .action-buttons button {
-        width: 100%;
-        justify-content: center;
-    }
+    font-size: 0.8rem;
 }
