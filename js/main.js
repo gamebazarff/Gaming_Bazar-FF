@@ -165,33 +165,79 @@ class MainPage {
             return;
         }
 
+        // Get form values
+        const productId = document.getElementById('selectedProductId').value;
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const paymentNumber = document.getElementById('paymentNumber').value;
+        const transactionId = document.getElementById('transactionId').value;
+        const gameId = document.getElementById('gameId').value;
+
+        // Validate form
+        if (!paymentMethod || !paymentNumber || !transactionId || !gameId) {
+            alert('Please fill all required fields');
+            return;
+        }
+
         const orderData = {
             user_id: currentUser.id,
-            product_id: document.getElementById('selectedProductId').value,
-            payment_method: document.getElementById('paymentMethod').value,
-            payment_number: document.getElementById('paymentNumber').value,
-            transaction_id: document.getElementById('transactionId').value,
-            game_id: document.getElementById('gameId').value,
+            product_id: productId,
+            payment_method: paymentMethod,
+            payment_number: paymentNumber,
+            transaction_id: transactionId,
+            game_id: gameId,
             status: 'pending'
         };
 
+        console.log('Submitting order:', orderData);
+
         try {
+            // Show loading state
+            const submitBtn = document.querySelector('.submit-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Placing Order...';
+            submitBtn.disabled = true;
+
             const { data, error } = await window.supabase
                 .from('orders')
                 .insert([orderData])
                 .select()
                 .single();
 
-            if (error) throw error;
+            // Reset button
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+
+            if (error) {
+                console.error('Order error details:', error);
+                
+                if (error.code === '42501') {
+                    throw new Error('Order failed due to security policy. Please contact administrator.');
+                }
+                
+                if (error.message.includes('row-level security')) {
+                    throw new Error('Order blocked by security policy. Please run the SQL commands to fix RLS.');
+                }
+                
+                if (error.message.includes('foreign key constraint')) {
+                    throw new Error('Invalid product selected. Please try again.');
+                }
+                
+                throw new Error('Order failed: ' + error.message);
+            }
+
+            if (!data) {
+                throw new Error('No order data returned from server');
+            }
 
             alert('Order placed successfully! We will process it shortly.');
             this.closeModal();
             
             // Redirect to account page to see the order
             window.location.href = 'account.html';
+            
         } catch (error) {
             console.error('Error placing order:', error);
-            alert('Error placing order. Please try again.');
+            alert('Error: ' + error.message);
         }
     }
 
@@ -202,7 +248,8 @@ class MainPage {
         
         if (hamburger && navMenu) {
             hamburger.addEventListener('click', () => {
-                navMenu.style.display = navMenu.style.display === 'flex' ? 'none' : 'flex';
+                const isVisible = navMenu.style.display === 'flex';
+                navMenu.style.display = isVisible ? 'none' : 'flex';
             });
         }
 
