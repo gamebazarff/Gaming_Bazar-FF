@@ -1,16 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Account - Fire Diamond Topup</title>
     <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
+    <!-- Top Banner -->
+    <div class="top-banner" id="topBanner">
+        <div class="banner-content">
+            <span id="bannerText">🔥 Instant Diamond Delivery | 24/7 Support</span>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="index.html#products" class="nav-item">
+            <i class="fas fa-gem"></i>
+            <span>Products</span>
+        </a>
+        <a href="#orders" class="nav-item active">
+            <i class="fas fa-shopping-bag"></i>
+            <span>My Orders</span>
+        </a>
+        <a href="#wallet" class="nav-item">
+            <i class="fas fa-wallet"></i>
+            <span>Wallet</span>
+        </a>
+        <a href="#profile" class="nav-item">
+            <i class="fas fa-user"></i>
+            <span>Account</span>
+        </a>
+    </nav>
+
+    <!-- Main Navigation -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <h2><a href="index.html" style="color: white; text-decoration: none;">Fire Diamond</a></h2>
+                <h2><a href="index.html" style="color: white; text-decoration: none;" id="siteName">Fire Diamond</a></h2>
             </div>
             <div class="nav-menu">
                 <a href="index.html" class="nav-link">Home</a>
@@ -24,9 +59,13 @@
             <div class="user-info">
                 <h3 id="userName">User Name</h3>
                 <p id="userEmail">user@email.com</p>
+                <div class="wallet-mini">
+                    <p><strong>Wallet:</strong> $<span id="userWalletBalance">0</span></p>
+                </div>
             </div>
             <nav class="account-nav">
                 <a href="#orders" class="nav-item active">My Orders</a>
+                <a href="#wallet" class="nav-item">Wallet</a>
                 <a href="#profile" class="nav-item">Profile</a>
             </nav>
         </div>
@@ -36,6 +75,35 @@
                 <h2>My Orders</h2>
                 <div class="orders-list" id="ordersList">
                     <!-- Orders will be loaded here -->
+                </div>
+            </div>
+
+            <div id="wallet" class="tab-content">
+                <div class="wallet-card">
+                    <h2>My Wallet</h2>
+                    <div class="wallet-balance-large">$<span id="walletBalance">0</span></div>
+                    <p>Available Balance</p>
+                    <div class="wallet-actions">
+                        <button class="submit-btn" onclick="openWalletModal()">
+                            <i class="fas fa-plus"></i> Add Money
+                        </button>
+                        <button class="submit-btn secondary" onclick="openWhatsApp()">
+                            <i class="fas fa-headset"></i> Support
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Recharge Requests Section -->
+                <div class="recharge-requests-section">
+                    <h3>Recharge Requests</h3>
+                    <div class="recharge-requests-list" id="rechargeRequestsList">
+                        <!-- Recharge requests will be loaded here -->
+                    </div>
+                </div>
+                
+                <h3>Transaction History</h3>
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Transactions will be loaded here -->
                 </div>
             </div>
 
@@ -63,46 +131,137 @@
         </div>
     </div>
 
+    <!-- WhatsApp Help Button -->
+    <div class="whatsapp-help" onclick="openWhatsApp()">
+        <i class="fab fa-whatsapp"></i>
+    </div>
+
+    <!-- Wallet Topup Modal -->
+    <div id="walletModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add Money to Wallet</h2>
+            <div class="wallet-info">
+                <p>Current Balance: $<span id="currentWalletBalance">0</span></p>
+            </div>
+            <form id="walletTopupForm">
+                <div class="form-group">
+                    <label>Amount ($):</label>
+                    <input type="number" id="topupAmount" required min="1" step="0.01" placeholder="Enter amount">
+                </div>
+                <div class="form-group">
+                    <label>Payment Method:</label>
+                    <select id="topupPaymentMethod" required>
+                        <option value="">Select Method</option>
+                        <!-- Payment methods will be loaded dynamically -->
+                    </select>
+                </div>
+                <div class="form-group payment-info" id="topupPaymentInfo" style="display: none;">
+                    <div class="payment-details">
+                        <h4>Payment Instructions</h4>
+                        <p><strong>Send money to:</strong> <span id="topupPaymentNumberDisplay" style="font-weight: bold; color: #667eea; font-size: 1.1em;"></span></p>
+                        <p id="topupPaymentInstructions" style="white-space: pre-line; background: #fff; padding: 10px; border-radius: 5px; border-left: 3px solid #667eea;"></p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Your Bkash/Nagad Number:</label>
+                    <input type="text" id="topupPaymentNumber" placeholder="01XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Transaction ID:</label>
+                    <input type="text" id="topupTransactionId" required placeholder="Enter transaction ID">
+                </div>
+                <button type="submit" class="submit-btn">Add Money</button>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/debug.js"></script>
+    <script src="js/main.js"></script>
     <script>
         // Account page specific JavaScript
+        let currentUser = null;
+        let paymentMethods = [];
+        let userWallet = 0;
+        let whatsappNumber = '1234567890';
+
         document.addEventListener('DOMContentLoaded', function() {
-            // Load user profile
+            // Load user profile and wallet
             loadUserProfile();
-            
+            loadWalletBalance();
+            loadTransactions();
+            loadPaymentMethods();
+            loadSiteSettings();
+            loadRechargeRequests(); // Load recharge requests
+
             // Tab navigation
-            const navItems = document.querySelectorAll('.nav-item');
+            const navItems = document.querySelectorAll('.account-nav .nav-item');
             const tabContents = document.querySelectorAll('.tab-content');
 
             navItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
                     const target = this.getAttribute('href').substring(1);
-                    
+
                     // Update active nav item
                     navItems.forEach(nav => nav.classList.remove('active'));
                     this.classList.add('active');
-                    
+
                     // Show target tab
                     tabContents.forEach(tab => tab.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
-                    
-                    // Load orders if orders tab is clicked
+
+                    // Load data based on tab
                     if (target === 'orders') {
                         loadUserOrders();
+                    } else if (target === 'wallet') {
+                        loadWalletBalance();
+                        loadTransactions();
+                        loadRechargeRequests();
                     }
                 });
             });
 
             // Load user orders initially
             loadUserOrders();
+            
+            // Setup wallet modal
+            setupWalletModal();
         });
 
+        async function loadSiteSettings() {
+            try {
+                const { data: settings, error } = await window.supabase
+                    .from('site_settings')
+                    .select('*')
+                    .single();
+
+                if (!error && settings) {
+                    // Update site name and banner
+                    document.getElementById('siteName').textContent = settings.site_name || 'Fire Diamond';
+                    
+                    // Update banner - hide if empty
+                    const banner = document.getElementById('topBanner');
+                    const bannerText = document.getElementById('bannerText');
+                    if (settings.banner_text && settings.banner_text.trim() !== '') {
+                        bannerText.textContent = settings.banner_text;
+                        banner.style.display = 'block';
+                    } else {
+                        banner.style.display = 'none';
+                    }
+                    
+                    // Store WhatsApp number for support
+                    whatsappNumber = settings.whatsapp_number || '1234567890';
+                }
+            } catch (error) {
+                console.error('Error loading site settings:', error);
+            }
+        }
+
         async function loadUserProfile() {
-            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
             if (!currentUser) {
                 window.location.href = 'login.html';
                 return;
@@ -117,8 +276,183 @@
             document.getElementById('profileSince').textContent = new Date(currentUser.created_at).toLocaleDateString();
         }
 
+        async function loadWalletBalance() {
+            if (!currentUser) return;
+
+            try {
+                const { data, error } = await window.supabase
+                    .from('users')
+                    .select('wallet_balance')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (!error && data) {
+                    userWallet = data.wallet_balance || 0;
+                    document.getElementById('userWalletBalance').textContent = userWallet.toFixed(2);
+                    document.getElementById('walletBalance').textContent = userWallet.toFixed(2);
+                    document.getElementById('currentWalletBalance').textContent = userWallet.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error loading wallet balance:', error);
+            }
+        }
+
+        async function loadPaymentMethods() {
+            try {
+                const { data, error } = await window.supabase
+                    .from('payment_methods')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('name');
+
+                if (error) {
+                    console.error('Error loading payment methods:', error);
+                    return;
+                }
+
+                paymentMethods = data || [];
+                renderTopupPaymentMethods();
+            } catch (error) {
+                console.error('Error in loadPaymentMethods:', error);
+            }
+        }
+
+        function renderTopupPaymentMethods() {
+            const topupPaymentSelect = document.getElementById('topupPaymentMethod');
+            if (!topupPaymentSelect || !paymentMethods) return;
+
+            topupPaymentSelect.innerHTML = '<option value="">Select Method</option>' +
+                paymentMethods.map(method =>
+                    `<option value="${method.id}">${method.name}</option>`
+                ).join('');
+
+            // Add event listener for topup payment method selection
+            topupPaymentSelect.addEventListener('change', (e) => {
+                handleTopupPaymentMethodChange(e.target.value);
+            });
+        }
+
+        function handleTopupPaymentMethodChange(methodId) {
+            const paymentInfo = document.getElementById('topupPaymentInfo');
+
+            if (!methodId) {
+                paymentInfo.style.display = 'none';
+                return;
+            }
+
+            const method = paymentMethods.find(m => m.id === methodId);
+            if (method) {
+                document.getElementById('topupPaymentNumberDisplay').textContent = method.payment_number;
+                const formattedInstructions = method.instructions.replace(/\n/g, '<br>');
+                document.getElementById('topupPaymentInstructions').innerHTML = formattedInstructions;
+                paymentInfo.style.display = 'block';
+            }
+        }
+
+        async function loadTransactions() {
+            if (!currentUser) return;
+
+            try {
+                const { data: transactions, error } = await window.supabase
+                    .from('wallet_transactions')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error loading transactions:', error);
+                    return;
+                }
+
+                const transactionsList = document.getElementById('transactionsList');
+                if (!transactions || transactions.length === 0) {
+                    transactionsList.innerHTML = '<p>No transactions found.</p>';
+                    return;
+                }
+
+                transactionsList.innerHTML = transactions.map(transaction => {
+                    // Determine transaction type and styling
+                    let transactionType = 'Unknown';
+                    let amountClass = '';
+                    let amountDisplay = transaction.amount;
+                    
+                    if (transaction.type === 'topup' || transaction.amount > 0) {
+                        transactionType = 'Topup';
+                        amountClass = 'text-success';
+                        amountDisplay = `+$${Math.abs(transaction.amount)}`;
+                    } else if (transaction.type === 'purchase' || transaction.amount < 0) {
+                        transactionType = 'Purchase';
+                        amountClass = 'text-danger';
+                        amountDisplay = `-$${Math.abs(transaction.amount)}`;
+                    } else {
+                        amountDisplay = `$${Math.abs(transaction.amount)}`;
+                    }
+
+                    return `
+                        <div class="order-card">
+                            <div class="order-header">
+                                <h3>${transactionType}</h3>
+                                <span class="order-status ${transaction.status}">${transaction.status}</span>
+                            </div>
+                            <div class="order-details">
+                                <p><strong>Amount:</strong> <span class="${amountClass}" style="font-weight: bold;">${amountDisplay}</span></p>
+                                <p><strong>Type:</strong> ${transaction.type || 'N/A'}</p>
+                                <p><strong>Payment Method:</strong> ${transaction.payment_method || 'N/A'}</p>
+                                ${transaction.transaction_id ? `<p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>` : ''}
+                                ${transaction.description ? `<p><strong>Description:</strong> ${transaction.description}</p>` : ''}
+                                <p><strong>Date:</strong> ${new Date(transaction.created_at).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        // Load recharge requests
+        async function loadRechargeRequests() {
+            if (!currentUser) return;
+
+            try {
+                const { data: rechargeRequests, error } = await window.supabase
+                    .from('wallet_recharge_requests')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error loading recharge requests:', error);
+                    return;
+                }
+
+                const rechargeList = document.getElementById('rechargeRequestsList');
+                if (!rechargeRequests || rechargeRequests.length === 0) {
+                    rechargeList.innerHTML = '<p>No recharge requests found.</p>';
+                    return;
+                }
+
+                rechargeList.innerHTML = rechargeRequests.map(request => `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <h3>Wallet Recharge - $${request.amount}</h3>
+                            <span class="order-status ${request.status}">${request.status}</span>
+                        </div>
+                        <div class="order-details">
+                            <p><strong>Payment Method:</strong> ${request.payment_method}</p>
+                            <p><strong>Payment Number:</strong> ${request.payment_number || 'N/A'}</p>
+                            <p><strong>Transaction ID:</strong> ${request.transaction_id}</p>
+                            <p><strong>Date:</strong> ${new Date(request.created_at).toLocaleDateString()}</p>
+                            ${request.admin_notes ? `<p><strong>Admin Notes:</strong> ${request.admin_notes}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading recharge requests:', error);
+            }
+        }
+
         async function loadUserOrders() {
-            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
             if (!currentUser) {
                 window.location.href = 'login.html';
                 return;
@@ -132,10 +466,7 @@
 
             const { data: orders, error } = await supabase
                 .from('orders')
-                .select(`
-                    *,
-                    products (name, diamonds_count, price)
-                `)
+                .select(`*, products (name, diamonds_count, price)`)
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
 
@@ -158,14 +489,145 @@
                     </div>
                     <div class="order-details">
                         <p><strong>Diamonds:</strong> ${order.products.diamonds_count}</p>
-                        <p><strong>Price:</strong> ৳${order.products.price}</p>
+                        <p><strong>Price:</strong> $${order.products.price}</p>
                         <p><strong>Payment Method:</strong> ${order.payment_method}</p>
+                        <p><strong>Payment Number:</strong> ${order.payment_number}</p>
                         <p><strong>Transaction ID:</strong> ${order.transaction_id}</p>
+                        <p><strong>Game ID:</strong> ${order.game_id}</p>
                         <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
                     </div>
                 </div>
             `).join('');
         }
+
+        function setupWalletModal() {
+            const walletModal = document.getElementById('walletModal');
+            const closeBtn = walletModal.querySelector('.close');
+            const walletTopupForm = document.getElementById('walletTopupForm');
+
+            closeBtn.addEventListener('click', () => {
+                walletModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (e) => {
+                if (e.target === walletModal) {
+                    walletModal.style.display = 'none';
+                }
+            });
+
+            walletTopupForm.addEventListener('submit', (e) => submitWalletTopup(e));
+        }
+
+        function openWalletModal() {
+            if (!currentUser) {
+                alert('Please login to add money to wallet');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('currentWalletBalance').textContent = userWallet.toFixed(2);
+            document.getElementById('topupPaymentInfo').style.display = 'none';
+            document.getElementById('topupPaymentMethod').selectedIndex = 0;
+            document.getElementById('walletTopupForm').reset();
+            
+            document.getElementById('walletModal').style.display = 'block';
+        }
+
+        async function submitWalletTopup(e) {
+            e.preventDefault();
+
+            if (!currentUser) {
+                alert('Please login to add money');
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('topupAmount').value);
+            const paymentMethodId = document.getElementById('topupPaymentMethod').value;
+            const paymentNumber = document.getElementById('topupPaymentNumber').value;
+            const transactionId = document.getElementById('topupTransactionId').value;
+
+            // Validation
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            if (!paymentMethodId) {
+                alert('Please select a payment method');
+                return;
+            }
+
+            if (!transactionId) {
+                alert('Please enter transaction ID');
+                return;
+            }
+
+            // Get payment method details
+            const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId);
+            if (!selectedMethod) {
+                alert('Invalid payment method selected');
+                return;
+            }
+
+            try {
+                const submitBtn = document.querySelector('#walletTopupForm .submit-btn');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Submitting...';
+                submitBtn.disabled = true;
+
+                // Create wallet recharge request
+                const rechargeData = {
+                    user_id: currentUser.id,
+                    amount: amount,
+                    payment_method: selectedMethod.name,
+                    payment_number: paymentNumber,
+                    transaction_id: transactionId,
+                    status: 'pending'
+                };
+
+                console.log('Submitting recharge request:', rechargeData);
+
+                const { data, error } = await window.supabase
+                    .from('wallet_recharge_requests')
+                    .insert([rechargeData])
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw new Error('Failed to submit recharge request: ' + error.message);
+                }
+
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+
+                if (!data) {
+                    throw new Error('No data returned from server');
+                }
+
+                console.log('Recharge request submitted successfully:', data);
+                
+                alert('Recharge request submitted successfully! We will process it shortly.');
+                document.getElementById('walletModal').style.display = 'none';
+                
+                // Reload recharge requests
+                loadRechargeRequests();
+                
+            } catch (error) {
+                console.error('Error submitting recharge request:', error);
+                alert('Error: ' + error.message);
+                
+                const submitBtn = document.querySelector('#walletTopupForm .submit-btn');
+                submitBtn.textContent = 'Add Money';
+                submitBtn.disabled = false;
+            }
+        }
+
+        function openWhatsApp() {
+            const message = 'Hello! I need help with my account.';
+            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+        }
     </script>
 </body>
+
 </html>

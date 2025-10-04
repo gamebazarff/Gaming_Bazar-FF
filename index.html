@@ -1,17 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fire Diamond Topup</title>
+    <title id="siteTitle">Fire Diamond Topup</title>
     <link rel="stylesheet" href="styles/main.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item active">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="#products" class="nav-item">
+            <i class="fas fa-gem"></i>
+            <span>Products</span>
+        </a>
+        <a href="account.html#orders" class="nav-item">
+            <i class="fas fa-shopping-bag"></i>
+            <span>My Orders</span>
+        </a>
+        <a href="account.html#wallet" class="nav-item">
+            <i class="fas fa-wallet"></i>
+            <span>Wallet</span>
+        </a>
+        <a href="account.html" class="nav-item">
+            <i class="fas fa-user"></i>
+            <span>Account</span>
+        </a>
+    </nav>
+
+    <!-- Main Navigation -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <h2>Fire Diamond</h2>
+                <h2 id="siteName">Fire Diamond</h2>
             </div>
             <div class="nav-menu">
                 <a href="#" class="nav-link active">Home</a>
@@ -29,13 +56,19 @@
         </div>
     </nav>
 
-    <header class="hero">
-        <div class="hero-content">
-            <h1>Fire Diamond Topup</h1>
-            <p>Get your diamonds instantly with secure payment methods</p>
-            <a href="#products" class="cta-button">Buy Now</a>
+    <!-- Products Section -->
+    <section id="products" class="products">
+        <div class="container">
+            <h2 class="section-title">Available Diamond Packages</h2>
+            <div class="category-filter" id="categoryFilter">
+                <button class="filter-btn active" data-category="all">All</button>
+                <!-- Categories will be loaded here -->
+            </div>
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here -->
+            </div>
         </div>
-    </header>
+    </section>
 
     <section class="features">
         <div class="container">
@@ -59,19 +92,6 @@
         </div>
     </section>
 
-    <section id="products" class="products">
-        <div class="container">
-            <h2 class="section-title">Available Diamond Packages</h2>
-            <div class="category-filter">
-                <button class="filter-btn active" data-category="all">All</button>
-                <!-- Categories will be loaded here -->
-            </div>
-            <div class="products-grid" id="productsGrid">
-                <!-- Products will be loaded here -->
-            </div>
-        </div>
-    </section>
-
     <section id="how-to-buy" class="how-to-buy">
         <div class="container">
             <h2 class="section-title">How to Buy</h2>
@@ -84,7 +104,7 @@
                 <div class="step">
                     <div class="step-number">2</div>
                     <h3>Make Payment</h3>
-                    <p>Pay via Bkash or Nagad</p>
+                    <p>Pay via Bkash, Nagad or Wallet</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
@@ -100,9 +120,14 @@
         </div>
     </section>
 
+    <!-- WhatsApp Help Button -->
+    <div class="whatsapp-help" onclick="window.mainPage.openWhatsApp()">
+        <i class="fab fa-whatsapp"></i>
+    </div>
+
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2024 Fire Diamond Topup. All rights reserved.</p>
+            <p>&copy; 2024 <span id="footerName">Fire Diamond Topup</span>. All rights reserved.</p>
         </div>
     </footer>
 
@@ -113,7 +138,7 @@
             <h2 id="modalProductName"></h2>
             <p id="modalProductDesc"></p>
             <div class="price-section">
-                <h3>Price: ৳<span id="modalProductPrice"></span></h3>
+                <h3>Price: $<span id="modalProductPrice"></span></h3>
                 <p>Diamonds: <span id="modalProductDiamonds"></span></p>
             </div>
             <form id="paymentForm">
@@ -122,17 +147,30 @@
                     <label>Payment Method:</label>
                     <select id="paymentMethod" required>
                         <option value="">Select Method</option>
-                        <option value="bkash">Bkash</option>
-                        <option value="nagad">Nagad</option>
+                        <option value="wallet">Wallet Balance</option>
+                        <!-- Payment methods will be loaded dynamically -->
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Your Bkash/Nagad Number:</label>
-                    <input type="text" id="paymentNumber" required placeholder="01XXXXXXXXX">
+                <div class="wallet-balance" id="walletBalanceInfo" style="display: none;">
+                    <p>Available Balance: $<span id="availableBalance">0</span></p>
                 </div>
-                <div class="form-group">
+                <div class="form-group payment-info" id="paymentInfo" style="display: none;">
+                    <div class="payment-details">
+                        <h4>Payment Instructions</h4>
+                        <p><strong>Send money to:</strong> <span id="paymentNumberDisplay" style="font-weight: bold; color: #667eea; font-size: 1.1em;"></span></p>
+                        <p id="paymentInstructions" style="white-space: pre-line; background: #fff; padding: 10px; border-radius: 5px; border-left: 3px solid #667eea;"></p>
+                        <p style="color: #e74c3c; font-weight: bold;">
+                            <i class="fas fa-exclamation-triangle"></i> Important: Include the Transaction ID in the payment reference
+                        </p>
+                    </div>
+                </div>
+                <div class="form-group" id="manualPaymentFields">
+                    <label>Your Bkash/Nagad Number:</label>
+                    <input type="text" id="paymentNumber" placeholder="01XXXXXXXXX">
+                </div>
+                <div class="form-group" id="manualTransactionField">
                     <label>Transaction ID:</label>
-                    <input type="text" id="transactionId" required placeholder="Enter transaction ID">
+                    <input type="text" id="transactionId" placeholder="Enter transaction ID">
                 </div>
                 <div class="form-group">
                     <label>Your Game ID:</label>
@@ -143,11 +181,51 @@
         </div>
     </div>
 
+    <!-- Wallet Topup Modal -->
+    <div id="walletModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add Money to Wallet</h2>
+            <div class="wallet-info">
+                <p>Current Balance: $<span id="currentWalletBalance">0</span></p>
+            </div>
+            <form id="walletTopupForm">
+                <div class="form-group">
+                    <label>Amount ($):</label>
+                    <input type="number" id="topupAmount" required min="1" step="0.01" placeholder="Enter amount">
+                </div>
+                <div class="form-group">
+                    <label>Payment Method:</label>
+                    <select id="topupPaymentMethod" required>
+                        <option value="">Select Method</option>
+                        <!-- Payment methods will be loaded dynamically -->
+                    </select>
+                </div>
+                <div class="form-group payment-info" id="topupPaymentInfo" style="display: none;">
+                    <div class="payment-details">
+                        <h4>Payment Instructions</h4>
+                        <p><strong>Send money to:</strong> <span id="topupPaymentNumberDisplay" style="font-weight: bold; color: #667eea; font-size: 1.1em;"></span></p>
+                        <p id="topupPaymentInstructions" style="white-space: pre-line; background: #fff; padding: 10px; border-radius: 5px; border-left: 3px solid #667eea;"></p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Your Bkash/Nagad Number:</label>
+                    <input type="text" id="topupPaymentNumber" placeholder="01XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Transaction ID:</label>
+                    <input type="text" id="topupTransactionId" required placeholder="Enter transaction ID">
+                </div>
+                <button type="submit" class="submit-btn">Add Money</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Load scripts in correct order -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/debug.js"></script>
 </body>
+
 </html>

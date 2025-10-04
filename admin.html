@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="styles/admin.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
     <div class="admin-container">
         <div class="admin-sidebar">
@@ -15,32 +17,34 @@
             </div>
             <nav class="admin-nav">
                 <a href="#dashboard" class="nav-item active">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
                 <a href="#users" class="nav-item">
-                    <i class="fas fa-users"></i>
-                    Users
+                    <i class="fas fa-users"></i> Users
                 </a>
                 <a href="#categories" class="nav-item">
-                    <i class="fas fa-list"></i>
-                    Categories
+                    <i class="fas fa-list"></i> Categories
                 </a>
                 <a href="#products" class="nav-item">
-                    <i class="fas fa-gem"></i>
-                    Products
+                    <i class="fas fa-gem"></i> Products
+                </a>
+                <a href="#payment-methods" class="nav-item">
+                    <i class="fas fa-credit-card"></i> Payment Methods
                 </a>
                 <a href="#orders" class="nav-item">
-                    <i class="fas fa-shopping-cart"></i>
-                    All Orders
+                    <i class="fas fa-shopping-cart"></i> All Orders
                 </a>
                 <a href="#pending-orders" class="nav-item">
-                    <i class="fas fa-clock"></i>
-                    Pending Orders
+                    <i class="fas fa-clock"></i> Pending Orders
+                </a>
+                <a href="#wallet-recharge" class="nav-item">
+                    <i class="fas fa-wallet"></i> Wallet Recharge
+                </a>
+                <a href="#site-settings" class="nav-item">
+                    <i class="fas fa-cog"></i> Site Settings
                 </a>
                 <a href="#" class="nav-item" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Logout
+                    <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
             </nav>
         </div>
@@ -86,6 +90,10 @@
                             <p id="bannedUsers">0</p>
                         </div>
                         <div class="stat-card">
+                            <h3>Pending Recharge</h3>
+                            <p id="pendingRecharge">0</p>
+                        </div>
+                        <div class="stat-card">
                             <h3>Total Revenue</h3>
                             <p id="totalRevenue">$0</p>
                         </div>
@@ -124,6 +132,7 @@
                                     <th>Full Name</th>
                                     <th>Email</th>
                                     <th>Mobile</th>
+                                    <th>Wallet Balance</th>
                                     <th>Orders</th>
                                     <th>Status</th>
                                     <th>Joined Date</th>
@@ -152,6 +161,7 @@
                         <table id="categoriesTable">
                             <thead>
                                 <tr>
+                                    <th>Icon</th>
                                     <th>Name</th>
                                     <th>Description</th>
                                     <th>Products Count</th>
@@ -191,6 +201,32 @@
                                 </tr>
                             </thead>
                             <tbody id="productsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="payment-methods" class="tab-content">
+                    <div class="section-header">
+                        <h2>Payment Methods</h2>
+                        <div class="payment-actions">
+                            <button class="btn-primary" id="addPaymentMethodBtn">
+                                <i class="fas fa-plus"></i> Add Payment Method
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="paymentMethodsTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Payment Number</th>
+                                    <th>Instructions</th>
+                                    <th>Status</th>
+                                    <th>Created Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentMethodsTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -266,10 +302,76 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Wallet Recharge Section -->
+                <div id="wallet-recharge" class="tab-content">
+                    <div class="section-header">
+                        <h2>Wallet Recharge Requests</h2>
+                        <div class="filter-controls">
+                            <select id="rechargeStatusFilter">
+                                <option value="all">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="rechargeRequestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Request ID</th>
+                                    <th>User</th>
+                                    <th>Amount</th>
+                                    <th>Payment Method</th>
+                                    <th>Transaction ID</th>
+                                    <th>Payment Number</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rechargeRequestsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Site Settings Section -->
+                <div id="site-settings" class="tab-content">
+                    <div class="section-header">
+                        <h2>Site Settings</h2>
+                    </div>
+                    <div class="table-container">
+                        <form id="siteSettingsForm">
+                            <div class="form-group">
+                                <label>Site Name:</label>
+                                <input type="text" id="siteNameSetting" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Hero Title:</label>
+                                <input type="text" id="heroTitleSetting" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Hero Subtitle:</label>
+                                <input type="text" id="heroSubtitleSetting" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Top Banner Text:</label>
+                                <input type="text" id="bannerTextSetting" placeholder="Leave empty to hide banner">
+                            </div>
+                            <div class="form-group">
+                                <label>WhatsApp Number (for support):</label>
+                                <input type="text" id="whatsappNumberSetting" required placeholder="1234567890">
+                            </div>
+                            <button type="submit" class="btn-primary">Save Settings</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Category Modal -->
     <div id="categoryModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -296,6 +398,7 @@
         </div>
     </div>
 
+    <!-- Product Modal -->
     <div id="productModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -336,6 +439,38 @@
         </div>
     </div>
 
+    <!-- Payment Method Modal -->
+    <div id="paymentMethodModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="paymentMethodModalTitle">Add Payment Method</h2>
+            <form id="paymentMethodForm">
+                <input type="hidden" id="paymentMethodId">
+                <div class="form-group">
+                    <label>Payment Method Name:</label>
+                    <input type="text" id="paymentMethodName" required placeholder="e.g., Bkash, Nagad, Rocket">
+                </div>
+                <div class="form-group">
+                    <label>Payment Number:</label>
+                    <input type="text" id="paymentMethodNumber" required placeholder="e.g., 0123456789">
+                </div>
+                <div class="form-group">
+                    <label>Instructions:</label>
+                    <textarea id="paymentMethodInstructions" rows="3" placeholder="Optional payment instructions for users"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Status:</label>
+                    <select id="paymentMethodStatus">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">Save Payment Method</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
     <div id="resetPasswordModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -367,6 +502,7 @@
         </div>
     </div>
 
+    <!-- Delete Modal -->
     <div id="deleteModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -379,9 +515,24 @@
         </div>
     </div>
 
+    <!-- Recharge Details Modal -->
+    <div id="rechargeDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Recharge Request Details</h2>
+            <div id="rechargeDetailsContent">
+                <!-- Details will be loaded here -->
+            </div>
+            <div class="modal-actions" id="rechargeDetailsActions">
+                <!-- Action buttons will be loaded here -->
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
 </body>
+
 </html>
