@@ -5,9 +5,12 @@ class AdminPanel {
         this.orders = [];
         this.pendingOrders = [];
         this.users = [];
+        this.paymentMethods = [];
+        this.walletRechargeRequests = [];
         this.selectedUsers = new Set();
         this.itemToDelete = null;
         this.deleteType = null;
+        this.siteSettings = {};
         this.init();
     }
 
@@ -59,6 +62,7 @@ class AdminPanel {
     setupButtonListeners() {
         document.getElementById('addCategoryBtn').addEventListener('click', () => this.openCategoryModal());
         document.getElementById('addProductBtn').addEventListener('click', () => this.openProductModal());
+        document.getElementById('addPaymentMethodBtn').addEventListener('click', () => this.openPaymentMethodModal());
         document.getElementById('cleanInactiveCategoriesBtn').addEventListener('click', () => this.deleteInactiveCategories());
         document.getElementById('cleanInactiveProductsBtn').addEventListener('click', () => this.deleteInactiveProducts());
         document.getElementById('cleanCompletedOrdersBtn').addEventListener('click', () => this.deleteCompletedOrders());
@@ -69,11 +73,18 @@ class AdminPanel {
         document.getElementById('deleteSelectedBtn').addEventListener('click', () => this.deleteSelectedUsers());
         document.getElementById('selectAllUsers').addEventListener('change', (e) => this.toggleSelectAllUsers(e));
         document.getElementById('generatePasswordBtn').addEventListener('click', () => this.generatePassword());
+        
+        // Site settings form
+        document.getElementById('siteSettingsForm').addEventListener('submit', (e) => this.saveSiteSettings(e));
+
+        // Recharge filter
+        document.getElementById('rechargeStatusFilter').addEventListener('change', () => this.renderWalletRechargeRequests());
     }
 
     setupModalListeners() {
         document.getElementById('categoryForm').addEventListener('submit', (e) => this.saveCategory(e));
         document.getElementById('productForm').addEventListener('submit', (e) => this.saveProduct(e));
+        document.getElementById('paymentMethodForm').addEventListener('submit', (e) => this.savePaymentMethod(e));
         document.getElementById('resetPasswordForm').addEventListener('submit', (e) => this.resetUserPassword(e));
         document.getElementById('confirmDeleteBtn').addEventListener('click', () => this.executeDelete());
         document.getElementById('cancelDeleteBtn').addEventListener('click', () => this.closeDeleteModal());
@@ -106,8 +117,11 @@ class AdminPanel {
             this.loadUsers(),
             this.loadCategories(),
             this.loadProducts(),
+            this.loadPaymentMethods(),
             this.loadOrders(),
-            this.loadPendingOrders()
+            this.loadPendingOrders(),
+            this.loadWalletRechargeRequests(),
+            this.loadSiteSettings()
         ]);
     }
 
@@ -122,6 +136,7 @@ class AdminPanel {
                 totalUsers,
                 activeUsers,
                 bannedUsers,
+                pendingRecharge,
                 revenueData
             ] = await Promise.all([
                 this.countRecords('orders'),
@@ -132,6 +147,7 @@ class AdminPanel {
                 this.countRecords('users'),
                 this.countRecords('users', 'is_active', true),
                 this.countRecords('users', 'is_active', false),
+                this.countRecords('wallet_recharge_requests', 'status', 'pending'),
                 window.supabase.from('orders').select('products (price)').eq('status', 'completed')
             ]);
 
@@ -151,6 +167,7 @@ class AdminPanel {
                 'totalUsers': totalUsers,
                 'activeUsers': activeUsers,
                 'bannedUsers': bannedUsers,
+                'pendingRecharge': pendingRecharge,
                 'totalRevenue': '$' + totalRevenue.toFixed(2)
             };
 
@@ -164,10 +181,10 @@ class AdminPanel {
     }
 
     async countRecords(table, column, value) {
-        const query = value ? 
+        const query = value ?
             window.supabase.from(table).select('*', { count: 'exact', head: true }).eq(column, value) :
             window.supabase.from(table).select('*', { count: 'exact', head: true });
-        
+
         const { count, error } = await query;
         return error ? 0 : (count || 0);
     }
@@ -218,6 +235,21 @@ class AdminPanel {
         }
     }
 
+    async loadPaymentMethods() {
+        try {
+            const { data, error } = await window.supabase
+                .from('payment_methods')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            this.paymentMethods = data || [];
+            this.renderPaymentMethods();
+        } catch (error) {
+            console.error('Error loading payment methods:', error);
+        }
+    }
+
     async loadOrders() {
         try {
             const { data, error } = await window.supabase
@@ -249,19 +281,149 @@ class AdminPanel {
         }
     }
 
+    // Load wallet recharge requests
+    async loadWalletRechargeRequests() {
+        try {
+            const { data, error } = await window.supabase
+                .from('wallet_recharge_requests')
+                .select('*, users(email, full_name, mobile_number, wallet_balance)')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            this.walletRechargeRequests = data || [];
+            this.renderWalletRechargeRequests();
+        } catch (error) {
+            console.error('Error loading recharge requests:', error);
+        }
+    }
+
+   // Site Settings management - Updated version
+async loadSiteSettings() {
+    try {
+        const { data, error } = await window.supabase
+            .from('site_settings')
+            .select('*')
+            .single();
+
+        if (error) {
+            console.error('Error loading site settings:', error);
+            
+            // If no settings found, create default
+            if (error.code === 'PGRST116') {
+                await this.createDefaultSiteSettings();
+                return this.loadSiteSettings(); // Reload after creation
+            }
+            return;
+        }
+
+        if (data) {
+            this.siteSettings = data;
+            this.populateSiteSettingsForm(data);
+        }
+    } catch (error) {
+        console.error('Error loading site settings:', error);
+    }
+}
+
+// Populate site settings form
+populateSiteSettingsForm(settings) {
+    document.getElementById('siteNameSetting').value = settings.site_name || '';
+    document.getElementById('heroTitleSetting').value = settings.hero_title || '';
+    document.getElementById('heroSubtitleSetting').value = settings.hero_subtitle || '';
+    document.getElementById('bannerTextSetting').value = settings.banner_text || '';
+    document.getElementById('whatsappNumberSetting').value = settings.whatsapp_number || '';
+}
+
+// Create default site settings
+async createDefaultSiteSettings() {
+    try {
+        const defaultSettings = {
+            site_name: 'Fire Diamond Topup',
+            hero_title: 'Fire Diamond Topup',
+            hero_subtitle: 'Get your diamonds instantly with secure payment methods',
+            banner_text: '🔥 Instant Diamond Delivery | 24/7 Support',
+            whatsapp_number: '1234567890'
+        };
+        
+        const { error } = await window.supabase
+            .from('site_settings')
+            .insert([defaultSettings]);
+            
+        if (error) {
+            console.error('Error creating default site settings:', error);
+        } else {
+            console.log('Default site settings created successfully');
+        }
+    } catch (error) {
+        console.error('Error in createDefaultSiteSettings:', error);
+    }
+}
+
+// Save site settings
+async saveSiteSettings(e) {
+    e.preventDefault();
+    
+    const settingsData = {
+        site_name: document.getElementById('siteNameSetting').value.trim(),
+        hero_title: document.getElementById('heroTitleSetting').value.trim(),
+        hero_subtitle: document.getElementById('heroSubtitleSetting').value.trim(),
+        banner_text: document.getElementById('bannerTextSetting').value.trim(),
+        whatsapp_number: document.getElementById('whatsappNumberSetting').value.trim()
+    };
+
+    // Validation
+    if (!settingsData.site_name || !settingsData.hero_title || !settingsData.whatsapp_number) {
+        alert('Please fill all required fields: Site Name, Hero Title, and WhatsApp Number');
+        return;
+    }
+
+    try {
+        // Check if settings already exist
+        const { data: existingSettings } = await window.supabase
+            .from('site_settings')
+            .select('id')
+            .single();
+
+        let result;
+        if (existingSettings) {
+            // Update existing settings
+            result = await window.supabase
+                .from('site_settings')
+                .update(settingsData)
+                .eq('id', existingSettings.id);
+        } else {
+            // Insert new settings
+            result = await window.supabase
+                .from('site_settings')
+                .insert([settingsData]);
+        }
+
+        if (result.error) throw result.error;
+
+        alert('Site settings saved successfully!');
+        
+        // Reload settings to ensure we have the latest data
+        await this.loadSiteSettings();
+        
+    } catch (error) {
+        console.error('Error saving site settings:', error);
+        alert('Error saving site settings: ' + error.message);
+    }
+}
+
     renderUsers() {
         const tbody = document.getElementById('usersTableBody');
         if (!tbody) return;
 
         const statusFilter = document.getElementById('userStatusFilter').value;
         const searchTerm = document.getElementById('userSearch').value.toLowerCase();
-        
+
         let filteredUsers = this.users.filter(user => {
-            const statusMatch = statusFilter === 'all' || 
+            const statusMatch = statusFilter === 'all' ||
                 (statusFilter === 'active' && user.is_active) ||
                 (statusFilter === 'banned' && !user.is_active);
-            
-            const searchMatch = !searchTerm || 
+
+            const searchMatch = !searchTerm ||
                 user.email.toLowerCase().includes(searchTerm) ||
                 user.full_name?.toLowerCase().includes(searchTerm) ||
                 user.mobile_number?.includes(searchTerm);
@@ -270,7 +432,7 @@ class AdminPanel {
         });
 
         if (filteredUsers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center">No users found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center">No users found</td></tr>';
             return;
         }
 
@@ -284,6 +446,7 @@ class AdminPanel {
                 <td>${user.full_name || '-'}</td>
                 <td>${user.email}</td>
                 <td>${user.mobile_number || '-'}</td>
+                <td>$${user.wallet_balance || '0'}</td>
                 <td>${user.orders?.length || 0}</td>
                 <td>
                     <span class="status-badge ${user.is_active ? 'status-active' : 'status-banned'}">
@@ -318,6 +481,239 @@ class AdminPanel {
 
         this.setupUserActionListeners();
         this.updateUserActionButtons();
+    }
+
+    // Render wallet recharge requests
+    renderWalletRechargeRequests() {
+        const tbody = document.getElementById('rechargeRequestsTableBody');
+        if (!tbody) return;
+
+        const statusFilter = document.getElementById('rechargeStatusFilter').value;
+        const filteredRequests = statusFilter === 'all' ? 
+            this.walletRechargeRequests : 
+            this.walletRechargeRequests.filter(req => req.status === statusFilter);
+
+        if (filteredRequests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No recharge requests found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filteredRequests.map(request => `
+            <tr class="${request.status === 'pending' ? 'highlight-row' : ''}">
+                <td><span class="id-cell">${request.id.substring(0, 8)}...</span></td>
+                <td>
+                    <strong>${request.users?.full_name || 'N/A'}</strong><br>
+                    <small>${request.users?.email}</small><br>
+                    <small>Balance: $${request.users?.wallet_balance || '0'}</small>
+                </td>
+                <td>$${request.amount}</td>
+                <td>${request.payment_method}</td>
+                <td><span class="id-cell">${request.transaction_id}</span></td>
+                <td>${request.payment_number || 'N/A'}</td>
+                <td>${new Date(request.created_at).toLocaleDateString()}</td>
+                <td>
+                    <span class="status-badge status-${request.status}">
+                        ${request.status}
+                    </span>
+                </td>
+                <td class="action-buttons">
+                    ${request.status === 'pending' ? `
+                        <button class="btn-success btn-sm approve-recharge" data-id="${request.id}">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn-danger btn-sm reject-recharge" data-id="${request.id}">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    ` : ''}
+                    <button class="btn-primary btn-sm view-recharge" data-id="${request.id}">
+                        <i class="fas fa-eye"></i> Details
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        this.setupRechargeActionListeners();
+    }
+
+    // Setup recharge action listeners
+    setupRechargeActionListeners() {
+        document.querySelectorAll('.approve-recharge').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const requestId = e.target.closest('button').dataset.id;
+                this.approveRechargeRequest(requestId);
+            });
+        });
+
+        document.querySelectorAll('.reject-recharge').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const requestId = e.target.closest('button').dataset.id;
+                this.rejectRechargeRequest(requestId);
+            });
+        });
+
+        document.querySelectorAll('.view-recharge').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const requestId = e.target.closest('button').dataset.id;
+                this.viewRechargeDetails(requestId);
+            });
+        });
+    }
+
+    // Approve recharge request
+    async approveRechargeRequest(requestId) {
+        if (!confirm('Are you sure you want to approve this recharge request?')) return;
+
+        try {
+            const request = this.walletRechargeRequests.find(req => req.id === requestId);
+            if (!request) throw new Error('Request not found');
+
+            // Update recharge request status
+            const { error: updateError } = await window.supabase
+                .from('wallet_recharge_requests')
+                .update({ 
+                    status: 'approved',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId);
+
+            if (updateError) throw updateError;
+
+            // Update user wallet balance
+            const { data: user, error: userError } = await window.supabase
+                .from('users')
+                .select('wallet_balance')
+                .eq('id', request.user_id)
+                .single();
+
+            if (userError) throw userError;
+
+            const newBalance = (user.wallet_balance || 0) + parseFloat(request.amount);
+
+            const { error: walletError } = await window.supabase
+                .from('users')
+                .update({ wallet_balance: newBalance })
+                .eq('id', request.user_id);
+
+            if (walletError) throw walletError;
+
+            // Create wallet transaction record
+            const { error: transactionError } = await window.supabase
+                .from('wallet_transactions')
+                .insert([{
+                    user_id: request.user_id,
+                    amount: request.amount,
+                    type: 'topup',
+                    payment_method: request.payment_method,
+                    transaction_id: request.transaction_id,
+                    recharge_request_id: requestId,
+                    status: 'completed',
+                    description: `Wallet recharge approved - ${request.payment_method}`
+                }]);
+
+            if (transactionError) throw transactionError;
+
+            alert('Recharge request approved successfully!');
+            await this.loadWalletRechargeRequests();
+            await this.loadStats();
+            await this.loadUsers();
+
+        } catch (error) {
+            console.error('Error approving recharge request:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Reject recharge request
+    async rejectRechargeRequest(requestId) {
+        const reason = prompt('Please enter reason for rejection:');
+        if (reason === null) return;
+
+        try {
+            const { error } = await window.supabase
+                .from('wallet_recharge_requests')
+                .update({ 
+                    status: 'rejected',
+                    admin_notes: reason,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId);
+
+            if (error) throw error;
+
+            alert('Recharge request rejected!');
+            await this.loadWalletRechargeRequests();
+
+        } catch (error) {
+            console.error('Error rejecting recharge request:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // View recharge details
+    async viewRechargeDetails(requestId) {
+        const request = this.walletRechargeRequests.find(req => req.id === requestId);
+        if (!request) return;
+
+        const modal = document.getElementById('rechargeDetailsModal');
+        const content = document.getElementById('rechargeDetailsContent');
+        const actions = document.getElementById('rechargeDetailsActions');
+
+        content.innerHTML = `
+            <div class="recharge-details">
+                <div class="detail-item">
+                    <label>User:</label>
+                    <span>${request.users?.full_name || 'N/A'} (${request.users?.email})</span>
+                </div>
+                <div class="detail-item">
+                    <label>Current Balance:</label>
+                    <span>$${request.users?.wallet_balance || '0'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Recharge Amount:</label>
+                    <span>$${request.amount}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Payment Method:</label>
+                    <span>${request.payment_method}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Payment Number:</label>
+                    <span>${request.payment_number || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Transaction ID:</label>
+                    <span>${request.transaction_id}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Status:</label>
+                    <span class="status-badge status-${request.status}">${request.status}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Request Date:</label>
+                    <span>${new Date(request.created_at).toLocaleString()}</span>
+                </div>
+                ${request.admin_notes ? `
+                <div class="detail-item">
+                    <label>Admin Notes:</label>
+                    <span>${request.admin_notes}</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        actions.innerHTML = '';
+        if (request.status === 'pending') {
+            actions.innerHTML = `
+                <button class="btn-success" onclick="window.adminPanel.approveRechargeRequest('${requestId}')">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                <button class="btn-danger" onclick="window.adminPanel.rejectRechargeRequest('${requestId}')">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+            `;
+        }
+
+        modal.style.display = 'block';
     }
 
     setupUserActionListeners() {
@@ -414,8 +810,11 @@ class AdminPanel {
         else if (tabName === 'users') this.loadUsers();
         else if (tabName === 'categories') this.loadCategories();
         else if (tabName === 'products') this.loadProducts();
+        else if (tabName === 'payment-methods') this.loadPaymentMethods();
         else if (tabName === 'orders') this.loadOrders();
         else if (tabName === 'pending-orders') this.loadPendingOrders();
+        else if (tabName === 'wallet-recharge') this.loadWalletRechargeRequests();
+        else if (tabName === 'site-settings') this.loadSiteSettings();
     }
 
     formatTabName(tabName) {
@@ -471,6 +870,33 @@ class AdminPanel {
         modal.style.display = 'block';
     }
 
+    openPaymentMethodModal(methodId = null) {
+        console.log('Opening payment method modal with ID:', methodId);
+        
+        const modal = document.getElementById('paymentMethodModal');
+        const title = document.getElementById('paymentMethodModalTitle');
+        
+        if (methodId) {
+            title.textContent = 'Edit Payment Method';
+            const method = this.paymentMethods.find(m => m.id === methodId);
+            console.log('Found payment method:', method);
+            
+            if (method) {
+                document.getElementById('paymentMethodId').value = method.id;
+                document.getElementById('paymentMethodName').value = method.name;
+                document.getElementById('paymentMethodNumber').value = method.payment_number;
+                document.getElementById('paymentMethodInstructions').value = method.instructions || '';
+                document.getElementById('paymentMethodStatus').value = method.is_active;
+            }
+        } else {
+            title.textContent = 'Add Payment Method';
+            document.getElementById('paymentMethodForm').reset();
+            document.getElementById('paymentMethodId').value = '';
+        }
+        
+        modal.style.display = 'block';
+    }
+
     populateCategorySelect() {
         const select = document.getElementById('productCategory');
         if (!select) return;
@@ -487,12 +913,15 @@ class AdminPanel {
         if (!tbody) return;
 
         if (this.categories.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No categories found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No categories found</td></tr>';
             return;
         }
 
         tbody.innerHTML = this.categories.map(category => `
             <tr>
+                <td>
+                    <i class="fas fa-folder" style="font-size: 1.5rem; color: #667eea;"></i>
+                </td>
                 <td><strong>${category.name}</strong></td>
                 <td>${category.description || '-'}</td>
                 <td>${category.products?.length || 0}</td>
@@ -609,6 +1038,78 @@ class AdminPanel {
         });
     }
 
+    renderPaymentMethods() {
+        const tbody = document.getElementById('paymentMethodsTableBody');
+        if (!tbody) return;
+
+        if (this.paymentMethods.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No payment methods found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = this.paymentMethods.map(method => `
+            <tr>
+                <td><strong>${method.name}</strong></td>
+                <td>${method.payment_number}</td>
+                <td style="white-space: pre-line;">${method.instructions || '-'}</td>
+                <td>
+                    <span class="status-badge ${method.is_active ? 'status-active' : 'status-inactive'}">
+                        ${method.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>${new Date(method.created_at).toLocaleDateString()}</td>
+                <td class="action-buttons">
+                    <button class="btn-primary btn-sm edit-payment-method" data-id="${method.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-danger btn-sm delete-payment-method" data-id="${method.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="${method.is_active ? 'btn-danger' : 'btn-success'} btn-sm toggle-payment-method" data-id="${method.id}">
+                        ${method.is_active ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>'}
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        // CRITICAL FIX: Call the action listeners setup after rendering
+        this.setupPaymentMethodActionListeners();
+    }
+
+    setupPaymentMethodActionListeners() {
+        console.log('Setting up payment method action listeners');
+        
+        // Edit payment method
+        document.querySelectorAll('.edit-payment-method').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const methodId = e.target.closest('button').dataset.id;
+                console.log('Editing payment method:', methodId);
+                this.openPaymentMethodModal(methodId);
+            });
+        });
+
+        // Delete payment method
+        document.querySelectorAll('.delete-payment-method').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const methodId = e.target.closest('button').dataset.id;
+                console.log('Deleting payment method:', methodId);
+                this.confirmDeletePaymentMethod(methodId);
+            });
+        });
+
+        // Toggle payment method status
+        document.querySelectorAll('.toggle-payment-method').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const methodId = e.target.closest('button').dataset.id;
+                const method = this.paymentMethods.find(m => m.id === methodId);
+                if (method) {
+                    console.log('Toggling payment method status:', methodId);
+                    this.togglePaymentMethodStatus(methodId, !method.is_active);
+                }
+            });
+        });
+    }
+
     renderOrders() {
         const tbody = document.getElementById('ordersTableBody');
         if (!tbody) return;
@@ -647,7 +1148,7 @@ class AdminPanel {
                 <td>${order.products?.name || '-'}</td>
                 <td>${order.users?.email || '-'}</td>
                 <td>$${order.products?.price || '0'}</td>
-                <td>${order.payment_method}</td>
+                <td>${order.payment_method || '-'}</td>
                 <td>${order.payment_number || '-'}</td>
                 <td><span class="id-cell">${order.transaction_id || '-'}</span></td>
                 <td>${order.game_id || '-'}</td>
@@ -761,6 +1262,54 @@ class AdminPanel {
         }
     }
 
+    async savePaymentMethod(e) {
+        e.preventDefault();
+        
+        console.log('Saving payment method...');
+        
+        const methodData = {
+            name: document.getElementById('paymentMethodName').value,
+            payment_number: document.getElementById('paymentMethodNumber').value,
+            instructions: document.getElementById('paymentMethodInstructions').value,
+            is_active: document.getElementById('paymentMethodStatus').value === 'true'
+        };
+
+        const methodId = document.getElementById('paymentMethodId').value;
+
+        console.log('Method data:', methodData);
+        console.log('Method ID:', methodId);
+
+        try {
+            let result;
+            if (methodId) {
+                console.log('Updating existing payment method...');
+                result = await window.supabase.from('payment_methods').update(methodData).eq('id', methodId);
+            } else {
+                console.log('Creating new payment method...');
+                result = await window.supabase.from('payment_methods').insert([methodData]);
+            }
+
+            console.log('Supabase result:', result);
+
+            if (result.error) {
+                console.error('Supabase error details:', result.error);
+                throw new Error(`Database error: ${result.error.message} (Code: ${result.error.code})`);
+            }
+
+            if (!result.data && !result.error) {
+                throw new Error('No response from database');
+            }
+
+            document.getElementById('paymentMethodModal').style.display = 'none';
+            await this.loadPaymentMethods();
+            alert('Payment method saved successfully!');
+            
+        } catch (error) {
+            console.error('Error saving payment method:', error);
+            alert('Error saving payment method: ' + error.message);
+        }
+    }
+
     async toggleCategoryStatus(categoryId, newStatus) {
         try {
             await window.supabase.from('categories').update({ is_active: newStatus }).eq('id', categoryId);
@@ -780,6 +1329,16 @@ class AdminPanel {
         } catch (error) {
             console.error('Error updating product status:', error);
             alert('Error updating product status.');
+        }
+    }
+
+    async togglePaymentMethodStatus(methodId, newStatus) {
+        try {
+            await window.supabase.from('payment_methods').update({ is_active: newStatus }).eq('id', methodId);
+            await this.loadPaymentMethods();
+        } catch (error) {
+            console.error('Error updating payment method status:', error);
+            alert('Error updating payment method status.');
         }
     }
 
@@ -854,7 +1413,7 @@ class AdminPanel {
         if (!user) return;
 
         const ordersCount = user.orders?.length || 0;
-        alert(`User Details:\n\nName: ${user.full_name || 'N/A'}\nEmail: ${user.email}\nMobile: ${user.mobile_number || 'N/A'}\nStatus: ${user.is_active ? 'Active' : 'Banned'}\nOrders: ${ordersCount}`);
+        alert(`User Details:\n\nName: ${user.full_name || 'N/A'}\nEmail: ${user.email}\nMobile: ${user.mobile_number || 'N/A'}\nWallet Balance: $${user.wallet_balance || '0'}\nStatus: ${user.is_active ? 'Active' : 'Banned'}\nOrders: ${ordersCount}`);
     }
 
     openResetPasswordModal(userId) {
@@ -946,6 +1505,22 @@ class AdminPanel {
         document.getElementById('deleteModal').style.display = 'block';
     }
 
+    confirmDeletePaymentMethod(methodId) {
+        this.itemToDelete = methodId;
+        this.deleteType = 'payment-method';
+        const method = this.paymentMethods.find(m => m.id === methodId);
+        
+        if (method) {
+            document.getElementById('deleteModalTitle').textContent = 'Delete Payment Method';
+            document.getElementById('deleteMessage').innerHTML = `
+                Are you sure you want to delete the payment method "<strong>${method.name}</strong>"?<br><br>
+                This action cannot be undone.
+            `;
+        }
+        
+        document.getElementById('deleteModal').style.display = 'block';
+    }
+
     confirmDeleteOrder(orderId) {
         this.itemToDelete = orderId;
         this.deleteType = 'order';
@@ -1009,6 +1584,10 @@ class AdminPanel {
 
                 case 'product':
                     ({ error } = await window.supabase.from('products').delete().eq('id', this.itemToDelete));
+                    break;
+
+                case 'payment-method':
+                    ({ error } = await window.supabase.from('payment_methods').delete().eq('id', this.itemToDelete));
                     break;
 
                 case 'order':
