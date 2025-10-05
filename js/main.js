@@ -6,31 +6,54 @@ class MainPage {
         this.paymentMethods = [];
         this.userWallet = 0;
         this.siteSettings = {};
+        this.initialized = false;
         this.init();
     }
 
     async init() {
         console.log('🚀 Initializing MainPage...');
-        await this.waitForSupabase();
-        await this.loadSiteSettings();
-        await this.loadCategories();
-        await this.loadProducts();
-        await this.loadPaymentMethods();
-        await this.loadWalletBalance();
-        this.setupEventListeners();
-        this.setupModal();
-        this.setupWalletModal();
-        console.log('✅ MainPage initialized successfully');
+        
+        // Wait for page to fully load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeApp());
+        } else {
+            await this.initializeApp();
+        }
+    }
+
+    async initializeApp() {
+        try {
+            await this.waitForSupabase();
+            await this.loadSiteSettings();
+            await this.loadCategories();
+            await this.loadProducts(); // এই line টি important - login ছাড়াই products load হবে
+            await this.loadPaymentMethods();
+            await this.loadWalletBalance();
+            this.setupEventListeners();
+            this.setupModal();
+            this.setupWalletModal();
+            this.initialized = true;
+            console.log('✅ MainPage initialized successfully');
+        } catch (error) {
+            console.error('❌ MainPage initialization failed:', error);
+            this.showErrorState();
+        }
     }
 
     async waitForSupabase() {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds maximum wait
+            
             const checkSupabase = () => {
+                attempts++;
                 if (typeof window.supabase !== 'undefined' && window.supabase) {
                     console.log('✅ Supabase ready for main page');
                     resolve();
+                } else if (attempts >= maxAttempts) {
+                    reject(new Error('Supabase failed to load within timeout'));
                 } else {
-                    console.log('⏳ Waiting for Supabase...');
+                    console.log('⏳ Waiting for Supabase... attempt', attempts);
                     setTimeout(checkSupabase, 100);
                 }
             };
@@ -47,7 +70,7 @@ class MainPage {
                 .single();
 
             if (error) {
-                console.error('❌ Error loading site settings:', error);
+                console.log('ℹ️ No site settings found, using defaults');
                 this.applyDefaultSiteSettings();
                 return;
             }
@@ -66,17 +89,24 @@ class MainPage {
     }
 
     applySiteSettings(settings) {
-        // Update site content
-        const siteTitle = document.getElementById('siteTitle');
-        const siteName = document.getElementById('siteName');
-        const footerName = document.getElementById('footerName');
-        
-        if (siteTitle) siteTitle.textContent = settings.site_name || 'Fire Diamond Topup';
-        if (siteName) siteName.textContent = settings.site_name || 'Fire Diamond';
-        if (footerName) footerName.textContent = settings.site_name || 'Fire Diamond Topup';
-        
-        // Store WhatsApp number for support
-        this.siteSettings.whatsapp_number = settings.whatsapp_number || '1234567890';
+        try {
+            // Update site content
+            const elements = {
+                'siteTitle': settings.site_name || 'Fire Diamond Topup',
+                'siteName': settings.site_name || 'Fire Diamond',
+                'footerName': settings.site_name || 'Fire Diamond Topup'
+            };
+
+            Object.keys(elements).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = elements[id];
+            });
+            
+            // Store WhatsApp number for support
+            this.siteSettings.whatsapp_number = settings.whatsapp_number || '1234567890';
+        } catch (error) {
+            console.error('Error applying site settings:', error);
+        }
     }
 
     applyDefaultSiteSettings() {
@@ -120,6 +150,8 @@ class MainPage {
     async loadProducts() {
         try {
             console.log('🔄 Loading products...');
+            
+            // IMPORTANT: This runs without requiring user login
             const { data, error } = await window.supabase
                 .from('products')
                 .select(`*, categories(name)`)
@@ -128,18 +160,16 @@ class MainPage {
 
             if (error) {
                 console.error('❌ Error loading products:', error);
-                this.products = [];
-                this.renderProducts();
-                return;
+                throw error;
             }
 
             console.log('✅ Products loaded:', data?.length || 0);
             this.products = data || [];
             this.renderProducts();
+            
         } catch (error) {
             console.error('❌ Error in loadProducts:', error);
-            this.products = [];
-            this.renderProducts();
+            this.showProductsError();
         }
     }
 
@@ -169,8 +199,12 @@ class MainPage {
     }
 
     async loadWalletBalance() {
+        // This only runs if user is logged in
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        if (!currentUser) return;
+        if (!currentUser) {
+            console.log('ℹ️ No user logged in, skipping wallet balance load');
+            return;
+        }
 
         try {
             const { data, error } = await window.supabase
@@ -209,6 +243,10 @@ class MainPage {
 
         if (this.categories.length === 0) {
             console.log('ℹ️ No categories to render');
+            const noCatMsg = document.createElement('div');
+            noCatMsg.className = 'no-categories';
+            noCatMsg.innerHTML = '<p>No categories available</p>';
+            filterContainer.appendChild(noCatMsg);
             return;
         }
 
@@ -244,7 +282,7 @@ class MainPage {
                 <div class="no-products" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">
                     <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <h3>No products found</h3>
-                    <p>No products available in this category.</p>
+                    <p>No products available at the moment.</p>
                 </div>
             `;
             return;
@@ -271,6 +309,38 @@ class MainPage {
         }).join('');
 
         console.log('✅ Products rendered successfully');
+    }
+
+    showProductsError() {
+        const productsGrid = document.getElementById('productsGrid');
+        if (!productsGrid) return;
+
+        productsGrid.innerHTML = `
+            <div class="products-error" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem; color: #ff6b6b;"></i>
+                <h3>Unable to load products</h3>
+                <p>Please check your internet connection and try again.</p>
+                <button onclick="window.mainPage.loadProducts()" class="buy-btn" style="margin-top: 1rem;">
+                    <i class="fas fa-redo"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+
+    showErrorState() {
+        const productsGrid = document.getElementById('productsGrid');
+        if (!productsGrid) return;
+
+        productsGrid.innerHTML = `
+            <div class="initialization-error" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">
+                <i class="fas fa-exclamation-circle" style="font-size: 3rem; margin-bottom: 1rem; color: #ffa502;"></i>
+                <h3>Loading Products...</h3>
+                <p>Please wait while we load the products.</p>
+                <button onclick="window.location.reload()" class="buy-btn" style="margin-top: 1rem;">
+                    <i class="fas fa-refresh"></i> Reload Page
+                </button>
+            </div>
+        `;
     }
 
     renderPaymentMethods() {
@@ -438,6 +508,13 @@ class MainPage {
     openProductModal(productId) {
         console.log('🔄 Opening product modal for ID:', productId);
         
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) {
+            alert('Please login to purchase products');
+            window.location.href = 'login.html';
+            return;
+        }
+        
         const product = this.products.find(p => p.id === productId);
         if (!product) {
             console.error('❌ Product not found:', productId);
@@ -537,42 +614,8 @@ class MainPage {
         if (topupPaymentInfo) topupPaymentInfo.style.display = 'none';
     }
 
-    // Simplified wallet transaction function
-    async createWalletTransaction(userId, amount, type, description = '') {
-        try {
-            const transactionData = {
-                user_id: userId,
-                amount: amount,
-                type: type,
-                description: description,
-                status: 'completed',
-                created_at: new Date().toISOString()
-            };
-
-            // Only include payment_method for purchases
-            if (type === 'purchase') {
-                transactionData.payment_method = 'Wallet';
-            }
-
-            console.log('Creating wallet transaction:', transactionData);
-
-            const { error } = await window.supabase
-                .from('wallet_transactions')
-                .insert([transactionData]);
-
-            if (error) {
-                console.error('Error creating wallet transaction:', error);
-                // Don't throw error for transaction recording - it shouldn't block the main order
-                console.warn('Wallet transaction recording failed, but order will continue');
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Exception in createWalletTransaction:', error);
-            // Don't throw error - continue with order
-            return false;
-        }
-    }
+    // ... (submitOrder, submitWalletTopup, createWalletTransaction methods remain the same as previous version)
+    // These methods are unchanged from the previous working version
 
     async submitOrder(e) {
         e.preventDefault();
@@ -802,6 +845,42 @@ class MainPage {
         }
     }
 
+    async createWalletTransaction(userId, amount, type, description = '') {
+        try {
+            const transactionData = {
+                user_id: userId,
+                amount: amount,
+                type: type,
+                description: description,
+                status: 'completed',
+                created_at: new Date().toISOString()
+            };
+
+            // Only include payment_method for purchases
+            if (type === 'purchase') {
+                transactionData.payment_method = 'Wallet';
+            }
+
+            console.log('Creating wallet transaction:', transactionData);
+
+            const { error } = await window.supabase
+                .from('wallet_transactions')
+                .insert([transactionData]);
+
+            if (error) {
+                console.error('Error creating wallet transaction:', error);
+                // Don't throw error for transaction recording - it shouldn't block the main order
+                console.warn('Wallet transaction recording failed, but order will continue');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Exception in createWalletTransaction:', error);
+            // Don't throw error - continue with order
+            return false;
+        }
+    }
+
     setupEventListeners() {
         // Mobile menu toggle
         const hamburger = document.querySelector('.hamburger');
@@ -859,10 +938,29 @@ document.addEventListener('DOMContentLoaded', function() {
     window.mainPage = new MainPage();
 });
 
-// Fallback initialization
+// Fallback initialization for mobile browsers
 window.addEventListener('load', function() {
-    if (!window.mainPage) {
-        console.log('🔄 Fallback initialization');
-        window.mainPage = new MainPage();
+    console.log('📄 Window Loaded - Checking MainPage initialization');
+    if (!window.mainPage || !window.mainPage.initialized) {
+        console.log('🔄 Fallback initialization for mobile');
+        setTimeout(() => {
+            if (!window.mainPage || !window.mainPage.initialized) {
+                window.mainPage = new MainPage();
+            }
+        }, 1000);
     }
 });
+
+// Additional mobile-specific initialization
+if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+    console.log('📱 Mobile browser detected');
+    document.addEventListener('DOMContentLoaded', function() {
+        // Force products load for mobile
+        setTimeout(() => {
+            if (window.mainPage && window.mainPage.products.length === 0) {
+                console.log('🔄 Mobile: Forcing products reload');
+                window.mainPage.loadProducts();
+            }
+        }, 2000);
+    });
+}
