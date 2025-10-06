@@ -8,6 +8,7 @@ class Auth {
     async init() {
         await this.waitForSupabase();
         this.updateUI();
+        this.protectPages();
     }
 
     async waitForSupabase() {
@@ -40,6 +41,11 @@ class Auth {
 
             if (error || !users) {
                 throw new Error('Invalid email or password');
+            }
+
+            // Check if user is active
+            if (!users.is_active) {
+                throw new Error('Your account has been suspended. Please contact support.');
             }
 
             this.currentUser = users;
@@ -80,7 +86,11 @@ class Auth {
             // Insert new user
             const { data, error } = await window.supabase
                 .from('users')
-                .insert([userData])
+                .insert([{
+                    ...userData,
+                    is_active: true,
+                    wallet_balance: 0
+                }])
                 .select()
                 .single();
 
@@ -128,6 +138,45 @@ class Auth {
     isAdmin() {
         return this.currentUser && this.currentUser.email === 'admin123@gmail.com';
     }
+
+    protectPages() {
+        const currentPage = window.location.pathname;
+
+        // Protect admin page - only admin can access
+        if (currentPage.includes('admin.html')) {
+            if (!this.isAuthenticated() || !this.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
+            }
+        }
+
+        // Protect account page - only authenticated users can access
+        if (currentPage.includes('account.html')) {
+            if (!this.isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+        }
+
+        // Redirect admin from home page to admin panel
+        if (currentPage.includes('index.html') || currentPage === '/') {
+            if (this.isAuthenticated() && this.isAdmin()) {
+                // Admin will see home page but can navigate to admin panel via account page
+                console.log('Admin user on home page');
+            }
+        }
+    }
+
+    // Check if user should be redirected from login page
+    checkAutoRedirect() {
+        if (this.isAuthenticated()) {
+            if (this.isAdmin()) {
+                window.location.href = 'admin.html';
+            } else {
+                window.location.href = 'account.html';
+            }
+        }
+    }
 }
 
 // Initialize auth when DOM is loaded
@@ -169,17 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Protect admin page
-    if (window.location.pathname.includes('admin.html')) {
-        if (!window.auth.isAuthenticated() || !window.auth.isAdmin()) {
-            window.location.href = 'login.html';
-        }
-    }
-
-    // Protect account page
-    if (window.location.pathname.includes('account.html')) {
-        if (!window.auth.isAuthenticated()) {
-            window.location.href = 'login.html';
-        }
+    // Check for auto-redirect on login page
+    if (window.location.pathname.includes('login.html')) {
+        window.auth.checkAutoRedirect();
     }
 });

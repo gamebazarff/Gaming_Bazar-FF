@@ -297,119 +297,146 @@ class AdminPanel {
         }
     }
 
-   // Site Settings management - Updated version
-async loadSiteSettings() {
-    try {
-        const { data, error } = await window.supabase
-            .from('site_settings')
-            .select('*')
-            .single();
+    // Site Settings management - Fixed version
+    async loadSiteSettings() {
+        try {
+            console.log('🔄 Loading site settings...');
+            const { data, error } = await window.supabase
+                .from('site_settings')
+                .select('*')
+                .single();
 
-        if (error) {
-            console.error('Error loading site settings:', error);
-            
-            // If no settings found, create default
-            if (error.code === 'PGRST116') {
-                await this.createDefaultSiteSettings();
-                return this.loadSiteSettings(); // Reload after creation
+            if (error) {
+                console.error('❌ Error loading site settings:', error);
+                
+                // If no settings found, create default
+                if (error.code === 'PGRST116') {
+                    console.log('📝 No site settings found, creating default...');
+                    await this.createDefaultSiteSettings();
+                    return this.loadSiteSettings(); // Reload after creation
+                }
+                return;
             }
+
+            if (data) {
+                console.log('✅ Site settings loaded:', data);
+                this.siteSettings = data;
+                this.populateSiteSettingsForm(data);
+            } else {
+                console.log('ℹ️ No site settings data found');
+                await this.createDefaultSiteSettings();
+            }
+        } catch (error) {
+            console.error('❌ Error loading site settings:', error);
+        }
+    }
+
+    // Populate site settings form
+    populateSiteSettingsForm(settings) {
+        console.log('📝 Populating form with settings:', settings);
+        
+        const siteNameInput = document.getElementById('siteNameSetting');
+        const whatsappInput = document.getElementById('whatsappNumberSetting');
+        const bannerInput = document.getElementById('bannerTextSetting');
+        
+        if (siteNameInput) siteNameInput.value = settings.site_name || '';
+        if (whatsappInput) whatsappInput.value = settings.whatsapp_number || '';
+        if (bannerInput) bannerInput.value = settings.banner_text || '';
+        
+        console.log('✅ Form populated successfully');
+    }
+
+    // Create default site settings
+    async createDefaultSiteSettings() {
+        try {
+            console.log('📝 Creating default site settings...');
+            const defaultSettings = {
+                site_name: 'Fire Diamond Topup',
+                whatsapp_number: '1234567890',
+                banner_text: '🔥 Instant Diamond Delivery | 24/7 Support'
+            };
+            
+            const { data, error } = await window.supabase
+                .from('site_settings')
+                .insert([defaultSettings])
+                .select()
+                .single();
+                
+            if (error) {
+                console.error('❌ Error creating default site settings:', error);
+                throw error;
+            } else {
+                console.log('✅ Default site settings created successfully:', data);
+            }
+        } catch (error) {
+            console.error('❌ Error in createDefaultSiteSettings:', error);
+        }
+    }
+
+    // Save site settings
+    async saveSiteSettings(e) {
+        e.preventDefault();
+        
+        console.log('💾 Saving site settings...');
+        
+        const settingsData = {
+            site_name: document.getElementById('siteNameSetting').value.trim(),
+            whatsapp_number: document.getElementById('whatsappNumberSetting').value.trim(),
+            banner_text: document.getElementById('bannerTextSetting').value.trim()
+        };
+
+        console.log('📦 Settings data to save:', settingsData);
+
+        // Validation
+        if (!settingsData.site_name || !settingsData.whatsapp_number) {
+            alert('Please fill all required fields: Site Name and WhatsApp Number');
             return;
         }
 
-        if (data) {
-            this.siteSettings = data;
-            this.populateSiteSettingsForm(data);
-        }
-    } catch (error) {
-        console.error('Error loading site settings:', error);
-    }
-}
+        try {
+            // Check if settings already exist
+            const { data: existingSettings, error: checkError } = await window.supabase
+                .from('site_settings')
+                .select('id')
+                .single();
 
-// Populate site settings form
-populateSiteSettingsForm(settings) {
-    document.getElementById('siteNameSetting').value = settings.site_name || '';
-    document.getElementById('heroTitleSetting').value = settings.hero_title || '';
-    document.getElementById('heroSubtitleSetting').value = settings.hero_subtitle || '';
-    document.getElementById('bannerTextSetting').value = settings.banner_text || '';
-    document.getElementById('whatsappNumberSetting').value = settings.whatsapp_number || '';
-}
+            if (checkError && checkError.code !== 'PGRST116') {
+                console.error('❌ Error checking existing settings:', checkError);
+                throw checkError;
+            }
 
-// Create default site settings
-async createDefaultSiteSettings() {
-    try {
-        const defaultSettings = {
-            site_name: 'Fire Diamond Topup',
-            hero_title: 'Fire Diamond Topup',
-            hero_subtitle: 'Get your diamonds instantly with secure payment methods',
-            banner_text: '🔥 Instant Diamond Delivery | 24/7 Support',
-            whatsapp_number: '1234567890'
-        };
-        
-        const { error } = await window.supabase
-            .from('site_settings')
-            .insert([defaultSettings]);
+            let result;
+            if (existingSettings) {
+                // Update existing settings
+                console.log('🔄 Updating existing settings...');
+                result = await window.supabase
+                    .from('site_settings')
+                    .update(settingsData)
+                    .eq('id', existingSettings.id);
+            } else {
+                // Insert new settings
+                console.log('🆕 Inserting new settings...');
+                result = await window.supabase
+                    .from('site_settings')
+                    .insert([settingsData]);
+            }
+
+            if (result.error) {
+                console.error('❌ Supabase error:', result.error);
+                throw result.error;
+            }
+
+            console.log('✅ Site settings saved successfully!');
+            alert('Site settings saved successfully!');
             
-        if (error) {
-            console.error('Error creating default site settings:', error);
-        } else {
-            console.log('Default site settings created successfully');
+            // Reload settings to ensure we have the latest data
+            await this.loadSiteSettings();
+            
+        } catch (error) {
+            console.error('❌ Error saving site settings:', error);
+            alert('Error saving site settings: ' + error.message);
         }
-    } catch (error) {
-        console.error('Error in createDefaultSiteSettings:', error);
     }
-}
-
-// Save site settings
-async saveSiteSettings(e) {
-    e.preventDefault();
-    
-    const settingsData = {
-        site_name: document.getElementById('siteNameSetting').value.trim(),
-        hero_title: document.getElementById('heroTitleSetting').value.trim(),
-        hero_subtitle: document.getElementById('heroSubtitleSetting').value.trim(),
-        banner_text: document.getElementById('bannerTextSetting').value.trim(),
-        whatsapp_number: document.getElementById('whatsappNumberSetting').value.trim()
-    };
-
-    // Validation
-    if (!settingsData.site_name || !settingsData.hero_title || !settingsData.whatsapp_number) {
-        alert('Please fill all required fields: Site Name, Hero Title, and WhatsApp Number');
-        return;
-    }
-
-    try {
-        // Check if settings already exist
-        const { data: existingSettings } = await window.supabase
-            .from('site_settings')
-            .select('id')
-            .single();
-
-        let result;
-        if (existingSettings) {
-            // Update existing settings
-            result = await window.supabase
-                .from('site_settings')
-                .update(settingsData)
-                .eq('id', existingSettings.id);
-        } else {
-            // Insert new settings
-            result = await window.supabase
-                .from('site_settings')
-                .insert([settingsData]);
-        }
-
-        if (result.error) throw result.error;
-
-        alert('Site settings saved successfully!');
-        
-        // Reload settings to ensure we have the latest data
-        await this.loadSiteSettings();
-        
-    } catch (error) {
-        console.error('Error saving site settings:', error);
-        alert('Error saving site settings: ' + error.message);
-    }
-}
 
     renderUsers() {
         const tbody = document.getElementById('usersTableBody');
