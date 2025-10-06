@@ -62,6 +62,10 @@
                 <div class="wallet-mini">
                     <p><strong>Wallet:</strong> $<span id="userWalletBalance">0</span></p>
                 </div>
+                <!-- Logout Button in User Info Section -->
+                <button class="logout-btn-sidebar" onclick="logoutUser()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
             </div>
             <nav class="account-nav">
                 <a href="#orders" class="nav-item active">My Orders</a>
@@ -126,6 +130,12 @@
                         <label>Member Since:</label>
                         <span id="profileSince"></span>
                     </div>
+                    <!-- Logout Button in Profile Section -->
+                    <div class="info-item" style="border-bottom: none; padding-top: 2rem;">
+                        <button class="logout-btn-profile" onclick="logoutUser()">
+                            <i class="fas fa-sign-out-alt"></i> Logout from Account
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,22 +191,21 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
-        // Account page specific JavaScript
-        let currentUser = null;
-        let paymentMethods = [];
-        let userWallet = 0;
-        let whatsappNumber = '1234567890';
-
+        // Simple account page initialization
         document.addEventListener('DOMContentLoaded', function() {
-            // Load user profile and wallet
-            loadUserProfile();
-            loadWalletBalance();
-            loadTransactions();
-            loadPaymentMethods();
-            loadSiteSettings();
-            loadRechargeRequests(); // Load recharge requests
+            console.log('📄 Account page loaded');
+            
+            // Check if mainPage is initialized, if not, initialize it
+            if (!window.mainPage) {
+                console.log('🔄 Initializing MainPage from account page');
+                window.mainPage = new MainPage();
+            } else {
+                // If already initialized, load account data
+                console.log('✅ MainPage already initialized, loading account data');
+                window.mainPage.loadAccountData();
+            }
 
-            // Tab navigation
+            // Setup tab navigation
             const navItems = document.querySelectorAll('.account-nav .nav-item');
             const tabContents = document.querySelectorAll('.tab-content');
 
@@ -214,418 +223,37 @@
                     document.getElementById(target).classList.add('active');
 
                     // Load data based on tab
-                    if (target === 'orders') {
-                        loadUserOrders();
-                    } else if (target === 'wallet') {
-                        loadWalletBalance();
-                        loadTransactions();
-                        loadRechargeRequests();
+                    if (target === 'orders' && window.mainPage) {
+                        window.mainPage.loadUserOrders();
+                    } else if (target === 'wallet' && window.mainPage) {
+                        window.mainPage.loadTransactions();
+                        window.mainPage.loadRechargeRequests();
                     }
                 });
             });
-
-            // Load user orders initially
-            loadUserOrders();
-            
-            // Setup wallet modal
-            setupWalletModal();
         });
 
-        async function loadSiteSettings() {
-            try {
-                const { data: settings, error } = await window.supabase
-                    .from('site_settings')
-                    .select('*')
-                    .single();
-
-                if (!error && settings) {
-                    // Update site name and banner
-                    document.getElementById('siteName').textContent = settings.site_name || 'Fire Diamond';
-                    
-                    // Update banner - hide if empty
-                    const banner = document.getElementById('topBanner');
-                    const bannerText = document.getElementById('bannerText');
-                    if (settings.banner_text && settings.banner_text.trim() !== '') {
-                        bannerText.textContent = settings.banner_text;
-                        banner.style.display = 'block';
-                    } else {
-                        banner.style.display = 'none';
-                    }
-                    
-                    // Store WhatsApp number for support
-                    whatsappNumber = settings.whatsapp_number || '1234567890';
-                }
-            } catch (error) {
-                console.error('Error loading site settings:', error);
-            }
-        }
-
-        async function loadUserProfile() {
-            currentUser = JSON.parse(localStorage.getItem('currentUser'));
-            if (!currentUser) {
-                window.location.href = 'login.html';
-                return;
-            }
-
-            // Update profile information
-            document.getElementById('userName').textContent = currentUser.full_name;
-            document.getElementById('userEmail').textContent = currentUser.email;
-            document.getElementById('profileName').textContent = currentUser.full_name;
-            document.getElementById('profileEmail').textContent = currentUser.email;
-            document.getElementById('profileMobile').textContent = currentUser.mobile_number;
-            document.getElementById('profileSince').textContent = new Date(currentUser.created_at).toLocaleDateString();
-        }
-
-        async function loadWalletBalance() {
-            if (!currentUser) return;
-
-            try {
-                const { data, error } = await window.supabase
-                    .from('users')
-                    .select('wallet_balance')
-                    .eq('id', currentUser.id)
-                    .single();
-
-                if (!error && data) {
-                    userWallet = data.wallet_balance || 0;
-                    document.getElementById('userWalletBalance').textContent = userWallet.toFixed(2);
-                    document.getElementById('walletBalance').textContent = userWallet.toFixed(2);
-                    document.getElementById('currentWalletBalance').textContent = userWallet.toFixed(2);
-                }
-            } catch (error) {
-                console.error('Error loading wallet balance:', error);
-            }
-        }
-
-        async function loadPaymentMethods() {
-            try {
-                const { data, error } = await window.supabase
-                    .from('payment_methods')
-                    .select('*')
-                    .eq('is_active', true)
-                    .order('name');
-
-                if (error) {
-                    console.error('Error loading payment methods:', error);
-                    return;
-                }
-
-                paymentMethods = data || [];
-                renderTopupPaymentMethods();
-            } catch (error) {
-                console.error('Error in loadPaymentMethods:', error);
-            }
-        }
-
-        function renderTopupPaymentMethods() {
-            const topupPaymentSelect = document.getElementById('topupPaymentMethod');
-            if (!topupPaymentSelect || !paymentMethods) return;
-
-            topupPaymentSelect.innerHTML = '<option value="">Select Method</option>' +
-                paymentMethods.map(method =>
-                    `<option value="${method.id}">${method.name}</option>`
-                ).join('');
-
-            // Add event listener for topup payment method selection
-            topupPaymentSelect.addEventListener('change', (e) => {
-                handleTopupPaymentMethodChange(e.target.value);
-            });
-        }
-
-        function handleTopupPaymentMethodChange(methodId) {
-            const paymentInfo = document.getElementById('topupPaymentInfo');
-
-            if (!methodId) {
-                paymentInfo.style.display = 'none';
-                return;
-            }
-
-            const method = paymentMethods.find(m => m.id === methodId);
-            if (method) {
-                document.getElementById('topupPaymentNumberDisplay').textContent = method.payment_number;
-                const formattedInstructions = method.instructions.replace(/\n/g, '<br>');
-                document.getElementById('topupPaymentInstructions').innerHTML = formattedInstructions;
-                paymentInfo.style.display = 'block';
-            }
-        }
-
-        async function loadTransactions() {
-            if (!currentUser) return;
-
-            try {
-                const { data: transactions, error } = await window.supabase
-                    .from('wallet_transactions')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.error('Error loading transactions:', error);
-                    return;
-                }
-
-                const transactionsList = document.getElementById('transactionsList');
-                if (!transactions || transactions.length === 0) {
-                    transactionsList.innerHTML = '<p>No transactions found.</p>';
-                    return;
-                }
-
-                transactionsList.innerHTML = transactions.map(transaction => {
-                    // Determine transaction type and styling
-                    let transactionType = 'Unknown';
-                    let amountClass = '';
-                    let amountDisplay = transaction.amount;
-                    
-                    if (transaction.type === 'topup' || transaction.amount > 0) {
-                        transactionType = 'Topup';
-                        amountClass = 'text-success';
-                        amountDisplay = `+$${Math.abs(transaction.amount)}`;
-                    } else if (transaction.type === 'purchase' || transaction.amount < 0) {
-                        transactionType = 'Purchase';
-                        amountClass = 'text-danger';
-                        amountDisplay = `-$${Math.abs(transaction.amount)}`;
-                    } else {
-                        amountDisplay = `$${Math.abs(transaction.amount)}`;
-                    }
-
-                    return `
-                        <div class="order-card">
-                            <div class="order-header">
-                                <h3>${transactionType}</h3>
-                                <span class="order-status ${transaction.status}">${transaction.status}</span>
-                            </div>
-                            <div class="order-details">
-                                <p><strong>Amount:</strong> <span class="${amountClass}" style="font-weight: bold;">${amountDisplay}</span></p>
-                                <p><strong>Type:</strong> ${transaction.type || 'N/A'}</p>
-                                <p><strong>Payment Method:</strong> ${transaction.payment_method || 'N/A'}</p>
-                                ${transaction.transaction_id ? `<p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>` : ''}
-                                ${transaction.description ? `<p><strong>Description:</strong> ${transaction.description}</p>` : ''}
-                                <p><strong>Date:</strong> ${new Date(transaction.created_at).toLocaleDateString()}</p>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {
-                console.error('Error loading transactions:', error);
-            }
-        }
-
-        // Load recharge requests
-        async function loadRechargeRequests() {
-            if (!currentUser) return;
-
-            try {
-                const { data: rechargeRequests, error } = await window.supabase
-                    .from('wallet_recharge_requests')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.error('Error loading recharge requests:', error);
-                    return;
-                }
-
-                const rechargeList = document.getElementById('rechargeRequestsList');
-                if (!rechargeRequests || rechargeRequests.length === 0) {
-                    rechargeList.innerHTML = '<p>No recharge requests found.</p>';
-                    return;
-                }
-
-                rechargeList.innerHTML = rechargeRequests.map(request => `
-                    <div class="order-card">
-                        <div class="order-header">
-                            <h3>Wallet Recharge - $${request.amount}</h3>
-                            <span class="order-status ${request.status}">${request.status}</span>
-                        </div>
-                        <div class="order-details">
-                            <p><strong>Payment Method:</strong> ${request.payment_method}</p>
-                            <p><strong>Payment Number:</strong> ${request.payment_number || 'N/A'}</p>
-                            <p><strong>Transaction ID:</strong> ${request.transaction_id}</p>
-                            <p><strong>Date:</strong> ${new Date(request.created_at).toLocaleDateString()}</p>
-                            ${request.admin_notes ? `<p><strong>Admin Notes:</strong> ${request.admin_notes}</p>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Error loading recharge requests:', error);
-            }
-        }
-
-        async function loadUserOrders() {
-            if (!currentUser) {
-                window.location.href = 'login.html';
-                return;
-            }
-
-            // Check if supabase is available
-            if (typeof supabase === 'undefined') {
-                console.error('Supabase not available');
-                return;
-            }
-
-            const { data: orders, error } = await supabase
-                .from('orders')
-                .select(`*, products (name, diamonds_count, price)`)
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Error loading orders:', error);
-                return;
-            }
-
-            const ordersList = document.getElementById('ordersList');
-            if (!orders || orders.length === 0) {
-                ordersList.innerHTML = '<p>No orders found.</p>';
-                return;
-            }
-
-            ordersList.innerHTML = orders.map(order => `
-                <div class="order-card">
-                    <div class="order-header">
-                        <h3>${order.products.name}</h3>
-                        <span class="order-status ${order.status}">${order.status}</span>
-                    </div>
-                    <div class="order-details">
-                        <p><strong>Diamonds:</strong> ${order.products.diamonds_count}</p>
-                        <p><strong>Price:</strong> $${order.products.price}</p>
-                        <p><strong>Payment Method:</strong> ${order.payment_method}</p>
-                        <p><strong>Payment Number:</strong> ${order.payment_number}</p>
-                        <p><strong>Transaction ID:</strong> ${order.transaction_id}</p>
-                        <p><strong>Game ID:</strong> ${order.game_id}</p>
-                        <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function setupWalletModal() {
-            const walletModal = document.getElementById('walletModal');
-            const closeBtn = walletModal.querySelector('.close');
-            const walletTopupForm = document.getElementById('walletTopupForm');
-
-            closeBtn.addEventListener('click', () => {
-                walletModal.style.display = 'none';
-            });
-
-            window.addEventListener('click', (e) => {
-                if (e.target === walletModal) {
-                    walletModal.style.display = 'none';
-                }
-            });
-
-            walletTopupForm.addEventListener('submit', (e) => submitWalletTopup(e));
-        }
-
-        function openWalletModal() {
-            if (!currentUser) {
-                alert('Please login to add money to wallet');
-                window.location.href = 'login.html';
-                return;
-            }
-
-            document.getElementById('currentWalletBalance').textContent = userWallet.toFixed(2);
-            document.getElementById('topupPaymentInfo').style.display = 'none';
-            document.getElementById('topupPaymentMethod').selectedIndex = 0;
-            document.getElementById('walletTopupForm').reset();
-            
-            document.getElementById('walletModal').style.display = 'block';
-        }
-
-        async function submitWalletTopup(e) {
-            e.preventDefault();
-
-            if (!currentUser) {
-                alert('Please login to add money');
-                return;
-            }
-
-            const amount = parseFloat(document.getElementById('topupAmount').value);
-            const paymentMethodId = document.getElementById('topupPaymentMethod').value;
-            const paymentNumber = document.getElementById('topupPaymentNumber').value;
-            const transactionId = document.getElementById('topupTransactionId').value;
-
-            // Validation
-            if (!amount || amount <= 0) {
-                alert('Please enter a valid amount');
-                return;
-            }
-
-            if (!paymentMethodId) {
-                alert('Please select a payment method');
-                return;
-            }
-
-            if (!transactionId) {
-                alert('Please enter transaction ID');
-                return;
-            }
-
-            // Get payment method details
-            const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId);
-            if (!selectedMethod) {
-                alert('Invalid payment method selected');
-                return;
-            }
-
-            try {
-                const submitBtn = document.querySelector('#walletTopupForm .submit-btn');
-                const originalText = submitBtn.textContent;
-                submitBtn.textContent = 'Submitting...';
-                submitBtn.disabled = true;
-
-                // Create wallet recharge request
-                const rechargeData = {
-                    user_id: currentUser.id,
-                    amount: amount,
-                    payment_method: selectedMethod.name,
-                    payment_number: paymentNumber,
-                    transaction_id: transactionId,
-                    status: 'pending'
-                };
-
-                console.log('Submitting recharge request:', rechargeData);
-
-                const { data, error } = await window.supabase
-                    .from('wallet_recharge_requests')
-                    .insert([rechargeData])
-                    .select()
-                    .single();
-
-                if (error) {
-                    console.error('Supabase error:', error);
-                    throw new Error('Failed to submit recharge request: ' + error.message);
-                }
-
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-
-                if (!data) {
-                    throw new Error('No data returned from server');
-                }
-
-                console.log('Recharge request submitted successfully:', data);
-                
-                alert('Recharge request submitted successfully! We will process it shortly.');
-                document.getElementById('walletModal').style.display = 'none';
-                
-                // Reload recharge requests
-                loadRechargeRequests();
-                
-            } catch (error) {
-                console.error('Error submitting recharge request:', error);
-                alert('Error: ' + error.message);
-                
-                const submitBtn = document.querySelector('#walletTopupForm .submit-btn');
-                submitBtn.textContent = 'Add Money';
-                submitBtn.disabled = false;
+        // Global functions
+        function logoutUser() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
             }
         }
 
         function openWhatsApp() {
             const message = 'Hello! I need help with my account.';
+            const whatsappNumber = '1234567890'; // Default number
             window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function openWalletModal() {
+            if (window.mainPage && typeof window.mainPage.openWalletModal === 'function') {
+                window.mainPage.openWalletModal();
+            } else {
+                console.error('MainPage not initialized');
+                alert('System not initialized. Please wait or refresh the page.');
+            }
         }
     </script>
 </body>
