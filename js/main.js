@@ -89,7 +89,7 @@ class MainPage {
             if (!ordersList) return;
 
             if (!orders || orders.length === 0) {
-                ordersList.innerHTML = '<p>No orders found.</p>';
+                ordersList.innerHTML = '<p>কোন অর্ডার পাওয়া যায়নি।</p>';
                 return;
             }
 
@@ -100,13 +100,13 @@ class MainPage {
                         <span class="order-status ${order.status}">${order.status}</span>
                     </div>
                     <div class="order-details">
-                        <p><strong>Diamonds:</strong> ${order.products.diamonds_count}</p>
-                        <p><strong>Price:</strong> $${order.products.price}</p>
-                        <p><strong>Payment Method:</strong> ${order.payment_method}</p>
-                        <p><strong>Payment Number:</strong> ${order.payment_number}</p>
-                        <p><strong>Transaction ID:</strong> ${order.transaction_id}</p>
-                        <p><strong>Game ID:</strong> ${order.game_id}</p>
-                        <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                        <p><strong>ডায়মন্ড:</strong> ${order.products.diamonds_count}</p>
+                        <p><strong>মূল্য:</strong> ৳${order.products.price}</p>
+                        <p><strong>পেমেন্ট পদ্ধতি:</strong> ${order.payment_method}</p>
+                        <p><strong>পেমেন্ট নম্বর:</strong> ${order.payment_number}</p>
+                        <p><strong>লেনদেন আইডি:</strong> ${order.transaction_id}</p>
+                        <p><strong>গেম আইডি:</strong> ${order.game_id}</p>
+                        <p><strong>তারিখ:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
                     </div>
                 </div>
             `).join('');
@@ -135,25 +135,25 @@ class MainPage {
             if (!transactionsList) return;
 
             if (!transactions || transactions.length === 0) {
-                transactionsList.innerHTML = '<p>No transactions found.</p>';
+                transactionsList.innerHTML = '<p>কোন লেনদেন পাওয়া যায়নি।</p>';
                 return;
             }
 
             transactionsList.innerHTML = transactions.map(transaction => {
-                let transactionType = 'Unknown';
+                let transactionType = 'অজানা';
                 let amountClass = '';
                 let amountDisplay = transaction.amount;
-                
+
                 if (transaction.type === 'topup' || transaction.amount > 0) {
-                    transactionType = 'Topup';
+                    transactionType = 'টপআপ';
                     amountClass = 'text-success';
-                    amountDisplay = `+$${Math.abs(transaction.amount)}`;
+                    amountDisplay = `+৳${Math.abs(transaction.amount)}`;
                 } else if (transaction.type === 'purchase' || transaction.amount < 0) {
-                    transactionType = 'Purchase';
+                    transactionType = 'ক্রয়';
                     amountClass = 'text-danger';
-                    amountDisplay = `-$${Math.abs(transaction.amount)}`;
+                    amountDisplay = `-৳${Math.abs(transaction.amount)}`;
                 } else {
-                    amountDisplay = `$${Math.abs(transaction.amount)}`;
+                    amountDisplay = `৳${Math.abs(transaction.amount)}`;
                 }
 
                 return `
@@ -163,12 +163,12 @@ class MainPage {
                             <span class="order-status ${transaction.status}">${transaction.status}</span>
                         </div>
                         <div class="order-details">
-                            <p><strong>Amount:</strong> <span class="${amountClass}" style="font-weight: bold;">${amountDisplay}</span></p>
-                            <p><strong>Type:</strong> ${transaction.type || 'N/A'}</p>
-                            <p><strong>Payment Method:</strong> ${transaction.payment_method || 'N/A'}</p>
-                            ${transaction.transaction_id ? `<p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>` : ''}
-                            ${transaction.description ? `<p><strong>Description:</strong> ${transaction.description}</p>` : ''}
-                            <p><strong>Date:</strong> ${new Date(transaction.created_at).toLocaleDateString()}</p>
+                            <p><strong>পরিমাণ:</strong> <span class="${amountClass}" style="font-weight: bold;">${amountDisplay}</span></p>
+                            <p><strong>ধরন:</strong> ${transaction.type || 'N/A'}</p>
+                            <p><strong>পেমেন্ট পদ্ধতি:</strong> ${transaction.payment_method || 'N/A'}</p>
+                            ${transaction.transaction_id ? `<p><strong>লেনদেন আইডি:</strong> ${transaction.transaction_id}</p>` : ''}
+                            ${transaction.description ? `<p><strong>বিবরণ:</strong> ${transaction.description}</p>` : ''}
+                            <p><strong>তারিখ:</strong> ${new Date(transaction.created_at).toLocaleDateString()}</p>
                         </div>
                     </div>
                 `;
@@ -198,22 +198,22 @@ class MainPage {
             if (!rechargeList) return;
 
             if (!rechargeRequests || rechargeRequests.length === 0) {
-                rechargeList.innerHTML = '<p>No recharge requests found.</p>';
+                rechargeList.innerHTML = '<p>কোন রিচার্জ রিকোয়েস্ট পাওয়া যায়নি।</p>';
                 return;
             }
 
             rechargeList.innerHTML = rechargeRequests.map(request => `
                 <div class="order-card">
                     <div class="order-header">
-                        <h3>Wallet Recharge - $${request.amount}</h3>
+                        <h3>ওয়ালেট রিচার্জ - ৳${request.amount}</h3>
                         <span class="order-status ${request.status}">${request.status}</span>
                     </div>
                     <div class="order-details">
-                        <p><strong>Payment Method:</strong> ${request.payment_method}</p>
-                        <p><strong>Payment Number:</strong> ${request.payment_number || 'N/A'}</p>
-                        <p><strong>Transaction ID:</strong> ${request.transaction_id}</p>
-                        <p><strong>Date:</strong> ${new Date(request.created_at).toLocaleDateString()}</p>
-                        ${request.admin_notes ? `<p><strong>Admin Notes:</strong> ${request.admin_notes}</p>` : ''}
+                        <p><strong>পেমেন্ট পদ্ধতি:</strong> ${request.payment_method}</p>
+                        <p><strong>পেমেন্ট নম্বর:</strong> ${request.payment_number || 'N/A'}</p>
+                        <p><strong>লেনদেন আইডি:</strong> ${request.transaction_id}</p>
+                        <p><strong>তারিখ:</strong> ${new Date(request.created_at).toLocaleDateString()}</p>
+                        ${request.admin_notes ? `<p><strong>এডমিন নোট:</strong> ${request.admin_notes}</p>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -266,29 +266,29 @@ class MainPage {
 
     applySiteSettings(settings) {
         console.log('🎨 Applying site settings:', settings);
-        
+
         // Update site content
         const siteTitle = document.getElementById('siteTitle');
         const siteName = document.getElementById('siteName');
         const footerName = document.getElementById('footerName');
         const bannerText = document.getElementById('bannerText');
         const topBanner = document.getElementById('topBanner');
-        
+
         if (siteTitle) {
-            siteTitle.textContent = settings.site_name || 'Fire Diamond Topup';
+            siteTitle.textContent = settings.site_name || 'ফায়ার ডায়মন্ড টপআপ';
             console.log('✅ Site title updated:', settings.site_name);
         }
-        
+
         if (siteName) {
-            siteName.textContent = settings.site_name || 'Fire Diamond';
+            siteName.textContent = settings.site_name || 'ফায়ার ডায়মন্ড';
             console.log('✅ Site name updated:', settings.site_name);
         }
-        
+
         if (footerName) {
-            footerName.textContent = settings.site_name || 'Fire Diamond Topup';
+            footerName.textContent = settings.site_name || 'ফায়ার ডায়মন্ড টপআপ';
             console.log('✅ Footer name updated:', settings.site_name);
         }
-        
+
         // Banner text and visibility
         if (bannerText && topBanner) {
             if (settings.banner_text && settings.banner_text.trim() !== '') {
@@ -300,7 +300,7 @@ class MainPage {
                 console.log('✅ Banner hidden');
             }
         }
-        
+
         // Store WhatsApp number for support
         this.siteSettings.whatsapp_number = settings.whatsapp_number || '1234567890';
         console.log('✅ WhatsApp number stored:', this.siteSettings.whatsapp_number);
@@ -308,11 +308,11 @@ class MainPage {
 
     applyDefaultSiteSettings() {
         const defaultSettings = {
-            site_name: 'Fire Diamond Topup',
-            banner_text: '🔥 Instant Diamond Delivery | 24/7 Support',
+            site_name: 'ফায়ার ডায়মন্ড টপআপ',
+            banner_text: '🔥 তাৎক্ষণিক ডায়মন্ড ডেলিভারী | ২৪/৭ সাপোর্ট',
             whatsapp_number: '1234567890'
         };
-        
+
         this.applySiteSettings(defaultSettings);
     }
 
@@ -457,7 +457,7 @@ class MainPage {
         }
 
         console.log('🔄 Rendering products for category:', categoryId);
-        
+
         const filteredProducts = categoryId === 'all' ?
             this.products :
             this.products.filter(product => product.category_id === categoryId);
@@ -468,28 +468,28 @@ class MainPage {
             productsGrid.innerHTML = `
                 <div class="no-products" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">
                     <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <h3>No products found</h3>
-                    <p>No products available in this category.</p>
+                    <h3>কোন পণ্য পাওয়া যায়নি</h3>
+                    <p>এই ক্যাটাগরিতে কোন পণ্য নেই।</p>
                 </div>
             `;
             return;
         }
 
         productsGrid.innerHTML = filteredProducts.map(product => {
-            const categoryName = product.categories?.name || 'General';
-            const description = product.description || 'Get instant diamond delivery with secure payment.';
-            
+            const categoryName = product.categories?.name || 'সাধারণ';
+            const description = product.description || 'সুরক্ষিত পেমেন্টের সাথে তাৎক্ষণিক ডায়মন্ড ডেলিভারি পান।';
+
             return `
                 <div class="product-card" data-product-id="${product.id}">
                     <div class="product-category-badge">
                         ${categoryName}
                     </div>
                     <h3>${product.name}</h3>
-                    <p class="diamonds">${product.diamonds_count} Diamonds</p>
-                    <p class="price">$${product.price}</p>
+                    <p class="diamonds">${product.diamonds_count} ডায়মন্ড</p>
+                    <p class="price">৳${product.price}</p>
                     <p class="description">${description}</p>
                     <button class="buy-btn" onclick="window.mainPage.openProductModal('${product.id}')">
-                        <i class="fas fa-shopping-cart"></i> Buy Now
+                        <i class="fas fa-shopping-cart"></i> এখনই কিনুন
                     </button>
                 </div>
             `;
@@ -505,8 +505,8 @@ class MainPage {
             return;
         }
 
-        paymentMethodSelect.innerHTML = '<option value="">Select Method</option>' +
-            '<option value="wallet">Wallet Balance ($' + this.userWallet.toFixed(2) + ')</option>' +
+        paymentMethodSelect.innerHTML = '<option value="">পদ্ধতি নির্বাচন করুন</option>' +
+            '<option value="wallet">ওয়ালেট ব্যালেন্স (৳' + this.userWallet.toFixed(2) + ')</option>' +
             this.paymentMethods.map(method =>
                 `<option value="${method.id}">${method.name}</option>`
             ).join('');
@@ -526,7 +526,7 @@ class MainPage {
             return;
         }
 
-        topupPaymentSelect.innerHTML = '<option value="">Select Method</option>' +
+        topupPaymentSelect.innerHTML = '<option value="">পদ্ধতি নির্বাচন করুন</option>' +
             this.paymentMethods.map(method =>
                 `<option value="${method.id}">${method.name}</option>`
             ).join('');
@@ -557,13 +557,13 @@ class MainPage {
             if (method) {
                 const paymentNumberDisplay = document.getElementById('paymentNumberDisplay');
                 const paymentInstructions = document.getElementById('paymentInstructions');
-                
+
                 if (paymentNumberDisplay) paymentNumberDisplay.textContent = method.payment_number;
                 if (paymentInstructions) {
                     const formattedInstructions = method.instructions?.replace(/\n/g, '<br>') || '';
                     paymentInstructions.innerHTML = formattedInstructions;
                 }
-                
+
                 paymentInfo.style.display = 'block';
                 walletInfo.style.display = 'none';
                 if (manualPaymentFields) manualPaymentFields.style.display = 'block';
@@ -590,7 +590,7 @@ class MainPage {
         if (method) {
             const topupPaymentNumberDisplay = document.getElementById('topupPaymentNumberDisplay');
             const topupPaymentInstructions = document.getElementById('topupPaymentInstructions');
-            
+
             if (topupPaymentNumberDisplay) topupPaymentNumberDisplay.textContent = method.payment_number;
             if (topupPaymentInstructions) {
                 const formattedInstructions = method.instructions?.replace(/\n/g, '<br>') || '';
@@ -664,7 +664,7 @@ class MainPage {
             const newForm = this.walletTopupForm.cloneNode(true);
             this.walletTopupForm.parentNode.replaceChild(newForm, this.walletTopupForm);
             this.walletTopupForm = newForm;
-            
+
             // Add single event listener
             this.walletTopupForm.addEventListener('submit', (e) => this.submitWalletTopup(e));
         }
@@ -675,11 +675,11 @@ class MainPage {
 
     openProductModal(productId) {
         console.log('🔄 Opening product modal for ID:', productId);
-        
+
         const product = this.products.find(p => p.id === productId);
         if (!product) {
             console.error('❌ Product not found:', productId);
-            alert('Product not found. Please try again.');
+            alert('পণ্যটি পাওয়া যায়নি। দয়া করে আবার চেষ্টা করুন।');
             return;
         }
 
@@ -694,7 +694,7 @@ class MainPage {
 
         if (modalProductName) modalProductName.textContent = product.name;
         if (modalProductDesc) modalProductDesc.textContent = product.description || '';
-        if (modalProductPrice) modalProductPrice.textContent = product.price;
+        if (modalProductPrice) modalProductPrice.textContent = '৳' + product.price;
         if (modalProductDiamonds) modalProductDiamonds.textContent = product.diamonds_count;
         if (selectedProductId) selectedProductId.value = productId;
 
@@ -724,7 +724,7 @@ class MainPage {
     openWalletModal() {
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (!currentUser) {
-            alert('Please login to add money to wallet');
+            alert('ওয়ালেটে টাকা যোগ করতে অনুগ্রহ করে লগইন করুন');
             window.location.href = 'login.html';
             return;
         }
@@ -741,9 +741,9 @@ class MainPage {
         if (currentWalletBalance) currentWalletBalance.textContent = this.userWallet.toFixed(2);
         if (topupPaymentInfo) topupPaymentInfo.style.display = 'none';
         if (topupPaymentMethod) topupPaymentMethod.selectedIndex = 0;
-        
+
         if (this.walletTopupForm) this.walletTopupForm.reset();
-        
+
         if (this.walletModal) {
             this.walletModal.style.display = 'block';
             console.log('✅ Wallet modal opened');
@@ -757,7 +757,7 @@ class MainPage {
         if (this.paymentForm) {
             this.paymentForm.reset();
         }
-        
+
         const paymentInfo = document.getElementById('paymentInfo');
         const walletBalanceInfo = document.getElementById('walletBalanceInfo');
         const manualPaymentFields = document.getElementById('manualPaymentFields');
@@ -776,7 +776,7 @@ class MainPage {
         if (this.walletTopupForm) {
             this.walletTopupForm.reset();
         }
-        
+
         const topupPaymentInfo = document.getElementById('topupPaymentInfo');
         if (topupPaymentInfo) topupPaymentInfo.style.display = 'none';
     }
@@ -823,7 +823,7 @@ class MainPage {
 
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (!currentUser) {
-            alert('Please login to place an order');
+            alert('অর্ডার দিতে অনুগ্রহ করে লগইন করুন');
             window.location.href = 'login.html';
             return;
         }
@@ -841,36 +841,36 @@ class MainPage {
 
         // Validate form
         if (!paymentMethod || !gameId) {
-            alert('Please fill all required fields');
+            alert('অনুগ্রহ করে সব প্রয়োজনীয় তথ্য প্রদান করুন');
             return;
         }
 
         const product = this.products.find(p => p.id === productId);
         if (!product) {
-            alert('Product not found');
+            alert('পণ্যটি পাওয়া যায়নি');
             return;
         }
 
         // Check wallet balance if paying with wallet
         if (paymentMethod === 'wallet') {
             if (this.userWallet < product.price) {
-                alert('Insufficient wallet balance. Please add money to your wallet.');
+                alert('অপর্যাপ্ত ওয়ালেট ব্যালেন্স। দয়া করে আপনার ওয়ালেটে টাকা যোগ করুন।');
                 this.closeModal();
                 this.openWalletModal();
                 return;
             }
         } else {
             if (!paymentNumber || !transactionId) {
-                alert('Please fill all payment details');
+                alert('অনুগ্রহ করে সব পেমেন্ট বিবরণ প্রদান করুন');
                 return;
             }
         }
 
-        let paymentMethodName = 'Wallet';
+        let paymentMethodName = 'ওয়ালেট';
         if (paymentMethod !== 'wallet') {
             const selectedMethod = this.paymentMethods.find(m => m.id === paymentMethod);
             if (!selectedMethod) {
-                alert('Invalid payment method selected');
+                alert('অবৈধ পেমেন্ট পদ্ধতি নির্বাচন করা হয়েছে');
                 return;
             }
             paymentMethodName = selectedMethod.name;
@@ -892,13 +892,13 @@ class MainPage {
             // Show loading state
             const submitBtn = document.querySelector('#paymentForm .submit-btn');
             const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Placing Order...';
+            submitBtn.textContent = 'অর্ডার দেওয়া হচ্ছে...';
             submitBtn.disabled = true;
 
             // If paying with wallet, deduct balance
             if (paymentMethod === 'wallet') {
                 const newBalance = this.userWallet - product.price;
-                
+
                 // Update wallet balance
                 const { error: walletError } = await window.supabase
                     .from('users')
@@ -912,7 +912,7 @@ class MainPage {
                     currentUser.id, 
                     -product.price, 
                     'purchase', 
-                    `Purchase: ${product.name}`
+                    `ক্রয়: ${product.name}`
                 );
 
                 this.userWallet = newBalance;
@@ -932,15 +932,15 @@ class MainPage {
 
             if (error) {
                 console.error('❌ Order error details:', error);
-                throw new Error('Order failed: ' + error.message);
+                throw new Error('অর্ডার ব্যর্থ: ' + error.message);
             }
 
             if (!data) {
-                throw new Error('No order data returned from server');
+                throw new Error('সার্ভার থেকে কোন অর্ডার ডেটা পাওয়া যায়নি');
             }
 
             console.log('✅ Order placed successfully:', data);
-            alert('Order placed successfully! We will process it shortly.');
+            alert('অর্ডার সফলভাবে দেওয়া হয়েছে! আমরা শীঘ্রই এটি প্রক্রিয়া করব।');
             this.closeModal();
 
             // Redirect to account page to see the order
@@ -948,11 +948,11 @@ class MainPage {
 
         } catch (error) {
             console.error('❌ Error placing order:', error);
-            alert('Error: ' + error.message);
-            
+            alert('ত্রুটি: ' + error.message);
+
             // Reset button
             const submitBtn = document.querySelector('#paymentForm .submit-btn');
-            submitBtn.textContent = 'Submit Order';
+            submitBtn.textContent = 'অর্ডার সাবমিট করুন';
             submitBtn.disabled = false;
         }
     }
@@ -968,7 +968,7 @@ class MainPage {
 
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (!currentUser) {
-            alert('Please login to add money');
+            alert('টাকা যোগ করতে অনুগ্রহ করে লগইন করুন');
             window.location.href = 'login.html';
             return;
         }
@@ -980,24 +980,24 @@ class MainPage {
 
         // Validation
         if (!amount || amount <= 0) {
-            alert('Please enter a valid amount');
+            alert('অনুগ্রহ করে একটি বৈধ পরিমাণ লিখুন');
             return;
         }
 
         if (!paymentMethodId) {
-            alert('Please select a payment method');
+            alert('অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন');
             return;
         }
 
         if (!transactionId) {
-            alert('Please enter transaction ID');
+            alert('অনুগ্রহ করে লেনদেন আইডি লিখুন');
             return;
         }
 
         // Get payment method details
         const selectedMethod = this.paymentMethods.find(m => m.id === paymentMethodId);
         if (!selectedMethod) {
-            alert('Invalid payment method selected');
+            alert('অবৈধ পেমেন্ট পদ্ধতি নির্বাচন করা হয়েছে');
             return;
         }
 
@@ -1007,7 +1007,7 @@ class MainPage {
         try {
             const submitBtn = document.querySelector('#walletTopupForm .submit-btn');
             const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting...';
+            submitBtn.textContent = 'সাবমিট করা হচ্ছে...';
             submitBtn.disabled = true;
 
             // Create wallet recharge request
@@ -1030,32 +1030,32 @@ class MainPage {
 
             if (error) {
                 console.error('Supabase error:', error);
-                throw new Error('Failed to submit recharge request: ' + error.message);
+                throw new Error('রিচার্জ রিকোয়েস্ট জমা দিতে ব্যর্থ: ' + error.message);
             }
 
             if (!data) {
-                throw new Error('No data returned from server');
+                throw new Error('সার্ভার থেকে কোন ডেটা পাওয়া যায়নি');
             }
 
             console.log('Recharge request submitted successfully:', data);
-            
-            alert('Recharge request submitted successfully! We will process it shortly.');
+
+            alert('রিচার্জ রিকোয়েস্ট সফলভাবে জমা দেওয়া হয়েছে! আমরা শীঘ্রই এটি প্রক্রিয়া করব।');
             this.closeWalletModal();
-            
+
             // Reload recharge requests if on account page
             if (window.location.pathname.includes('account.html')) {
                 await this.loadRechargeRequests();
             }
-            
+
         } catch (error) {
             console.error('Error submitting recharge request:', error);
-            alert('Error: ' + error.message);
+            alert('ত্রুটি: ' + error.message);
         } finally {
             // Reset submitting flag and button state
             this.isSubmitting = false;
             const submitBtn = document.querySelector('#walletTopupForm .submit-btn');
             if (submitBtn) {
-                submitBtn.textContent = 'Add Money';
+                submitBtn.textContent = 'টাকা যোগ করুন';
                 submitBtn.disabled = false;
             }
         }
@@ -1064,13 +1064,13 @@ class MainPage {
     // Check user access and redirect if needed
     checkUserAccess() {
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        
+
         // If admin is logged in, they can stay on home page but can't access without login
         if (currentUser && currentUser.email === 'admin123@gmail.com') {
             console.log('Admin user accessing home page');
             // Admin can stay on home page, no redirect needed
         }
-        
+
         // Regular users can access home page normally
     }
 
@@ -1120,7 +1120,7 @@ class MainPage {
 
     openWhatsApp() {
         const phoneNumber = this.siteSettings.whatsapp_number || '1234567890';
-        const message = 'Hello! I need help with Fire Diamond Topup.';
+        const message = 'Hello! I need help with Free Fire Diamond Topup.';
         window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
     }
 }
