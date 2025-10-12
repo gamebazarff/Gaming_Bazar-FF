@@ -102,7 +102,7 @@ class MainPage {
                     <div class="order-details">
                         <p><strong>ডায়মন্ড          :</strong> ${order.products.diamonds_count}</p>
                         <p><strong>মূল্য            :</strong> ৳${order.products.price}</p>
-                        <p><strong>আপনার নাম্বার    :</strong> ${order.payment_method}</p>
+                        <p><strong>পেমেন্ট পদ্ধতি     :</strong> ${order.payment_method}</p>
                         <p><strong>পেমেন্ট নম্বর      :</strong> ${order.payment_number}</p>
                         <p><strong>ট্রান্সজেকশন আইডি :</strong> ${order.transaction_id}</p>
                         <p><strong>গেম আইডি       :</strong> ${order.game_id}</p>
