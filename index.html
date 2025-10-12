@@ -144,7 +144,7 @@
             <h2 id="modalProductName"></h2>
             <p id="modalProductDesc"></p>
             <div class="price-section">
-                <h3>Price: $<span id="modalProductPrice"></span></h3>
+                <h3>Price: ৳<span id="modalProductPrice"></span></h3>
                 <p>Diamonds: <span id="modalProductDiamonds"></span></p>
             </div>
             <form id="paymentForm">
@@ -158,7 +158,7 @@
                     </select>
                 </div>
                 <div class="wallet-balance" id="walletBalanceInfo" style="display: none;">
-                    <p>Available Balance: $<span id="availableBalance">0</span></p>
+                    <p>Available Balance: ৳<span id="availableBalance">0</span></p>
                 </div>
                 <div class="form-group payment-info" id="paymentInfo" style="display: none;">
                     <div class="payment-details">
@@ -171,15 +171,15 @@
                     </div>
                 </div>
                 <div class="form-group" id="manualPaymentFields">
-                    <label>Your Bkash/Nagad Number:</label>
+                    <label>আপনার নাম্বার:</label>
                     <input type="text" id="paymentNumber" placeholder="01XXXXXXXXX">
                 </div>
                 <div class="form-group" id="manualTransactionField">
-                    <label>Transaction ID:</label>
+                    <label>ট্রান্সজেকশন আইডি:</label>
                     <input type="text" id="transactionId" placeholder="Enter transaction ID">
                 </div>
                 <div class="form-group">
-                    <label>Your Game ID:</label>
+                    <label>গেম আইডি (UID):</label>
                     <input type="text" id="gameId" required placeholder="Enter your game ID">
                 </div>
                 <button type="submit" class="submit-btn">Submit Order</button>
@@ -193,11 +193,11 @@
             <span class="close">&times;</span>
             <h2>Add Money to Wallet</h2>
             <div class="wallet-info">
-                <p>Current Balance: $<span id="currentWalletBalance">0</span></p>
+                <p>Current Balance: ৳<span id="currentWalletBalance">0</span></p>
             </div>
             <form id="walletTopupForm">
                 <div class="form-group">
-                    <label>Amount ($):</label>
+                    <label>Amount (৳):</label>
                     <input type="number" id="topupAmount" required min="1" step="0.01" placeholder="Enter amount">
                 </div>
                 <div class="form-group">
