@@ -104,7 +104,7 @@ class MainPage {
                         <p><strong>মূল্য:</strong> ৳${order.products.price}</p>
                         <p><strong>পেমেন্ট পদ্ধতি:</strong> ${order.payment_method}</p>
                         <p><strong>পেমেন্ট নম্বর:</strong> ${order.payment_number}</p>
-                        <p><strong>ট্রান্সজেকশন আইডি:</strong> ${order.transaction_id}</p>
+                        <p><strong>লেনদেন আইডি:</strong> ${order.transaction_id}</p>
                         <p><strong>গেম আইডি:</strong> ${order.game_id}</p>
                         <p><strong>তারিখ:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
                     </div>
@@ -1120,7 +1120,7 @@ class MainPage {
 
     openWhatsApp() {
         const phoneNumber = this.siteSettings.whatsapp_number || '1234567890';
-        const message = 'Hello! I need help with Free Fire Diamond Topup.';
+        const message = 'Hello! I need help with Fire Diamond Topup.';
         window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
     }
 }
